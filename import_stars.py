@@ -254,9 +254,9 @@ def import_stars_from_excel(file_path, clear_existing=False, update_existing=Fal
                 photo_path = copy_image(row['Img'], row['Name'])
 
             # Создаем объект звезды
+            # Замена кода создания объекта звезды
             star = Star(
                 name=row['Name'],
-                country=country_objects[0],  # Основная страна (первая в списке)
                 birth_date=birth_date,
                 death_date=death_date,
                 content=row['Txt'],
@@ -266,12 +266,15 @@ def import_stars_from_excel(file_path, clear_existing=False, update_existing=Fal
                 rating=row['Rating'] if 'Rating' in row and not pd.isna(row['Rating']) else 0
             )
 
-            # Устанавливаем фото, если оно есть
             if photo_path:
                 star.photo = photo_path
 
             # Сохраняем для создания slug
             star.save()
+
+            # Добавляем все страны через ManyToManyField
+            for country in country_objects:
+                star.countries.add(country)
 
             # Добавляем категории
             for category in category_objects:

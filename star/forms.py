@@ -8,11 +8,11 @@ class StarForm(forms.ModelForm):
 
     class Meta:
         model = Star
-        fields = ['name', 'country', 'categories', 'birth_date', 'death_date',
+        fields = ['name', 'countries', 'categories', 'birth_date', 'death_date',
                   'content', 'photo', 'wikipedia', 'ruwiki']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'country': forms.Select(attrs={'class': 'form-select'}),
+            'countries': forms.Select(attrs={'class': 'form-select'}),
             'categories': forms.SelectMultiple(attrs={'class': 'form-select', 'size': '3'}),
             'birth_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'death_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),

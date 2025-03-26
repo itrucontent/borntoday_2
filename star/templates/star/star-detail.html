@@ -41,14 +41,14 @@
           <div>{{ star.get_years_range }}</div>
         </div>
         {% endif %}
-
-        <div class="info-line">
-          <div class="info-label">Страны:</div>
-          <div>
-            <a href="{% url 'stars_by_country' star.country.slug %}" class="country-badge">{{ star.country.name }}</a>
-          </div>
-        </div>
-
+<div class="info-line">
+  <div class="info-label">Страны:</div>
+  <div>
+    {% for country in star.countries.all %}
+    <a href="{% url 'stars_by_country' country.slug %}" class="country-badge">{{ country.name }}</a>{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  </div>
+</div>
         <div class="info-line">
           <div class="info-label">Род деятельности:</div>
           <div>
@@ -118,7 +118,7 @@
                   {% for category in similar_star.categories.all %}
                   <span class="activity-tag">{{ category.title }}</span>
                   {% endfor %}
-                  <small class="text-muted ms-2">{{ similar_star.country.name }}</small>
+                  <small class="text-muted ms-2">{{ similar_star.countries.name }}</small>
                 </p>
                 <p class="card-text small">
                   {{ similar_star.content|striptags|truncatechars:100 }}
@@ -134,6 +134,33 @@
     </div>
   </div>
 
+
+  <!-- После блока с похожими персонами -->
+{% if popular_tag_blocks %}
+<h3 class="fs-4 mt-4 mb-3">Популярные категории</h3>
+{% for block in popular_tag_blocks %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h4 class="fs-5 m-0">{{ block.title }}</h4>
+  </div>
+  <div class="card-body">
+    <ul class="list-group list-group-flush">
+      {% for tag_star in block.stars %}
+      <li class="list-group-item px-0">
+        <a href="{% url 'star_detail' tag_star.slug %}" class="text-decoration-none">
+          {{ tag_star.name }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="card-footer text-center">
+    <a href="{% url 'tag' block.slug %}" class="btn btn-outline-primary btn-sm">Смотреть все</a>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
   <!-- Правая колонка (фильтр) -->
   <div class="col-lg-4">
     <div class="filter-panel mb-4">
@@ -148,7 +175,7 @@
           <select class="form-select" id="country" name="country">
             <option value="" selected>Все страны</option>
             {% for country in countries %}
-            <option value="{{ country.slug }}">{{ country.name }}</option>
+            <option value="{{ countries.slug }}">{{ countries.name }}</option>
             {% endfor %}
           </select>
         </div>
@@ -168,7 +195,7 @@
     {% if tag_stars %}
     <div class="card mb-4">
       <div class="card-header">
-        <h4 class="fs-5 m-0">{{ star.categories.first.title }} {{ star.country.name }}</h4>
+        <h4 class="fs-5 m-0">{{ star.categories.first.title }} {{ star.countries.name }}</h4>
       </div>
       <div class="card-body">
         <ul class="list-group list-group-flush">

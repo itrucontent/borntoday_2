@@ -112,12 +112,16 @@
             <p class="card-text mb-2">
               <small>Дата рождения: {{ star.birth_date|date:"d E Y" }}</small>
             </p>
-            <p class="card-text mb-2">
-              {% for category in star.categories.all %}
-              <span class="activity-tag">{{ category.title }}</span>
-              {% endfor %}
-              <small class="text-muted ms-2">{{ star.country.name }}</small>
-            </p>
+<p class="card-text mb-2">
+  {% for category in star.categories.all %}
+  <span class="activity-tag">{{ category.title }}</span>
+  {% endfor %}
+  <small class="text-muted ms-2">
+    {% for country in star.countries.all %}
+    {{ country.name }}{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  </small>
+</p>
             <p class="card-text small">
               {{ star.content|striptags|truncatechars:150 }}
             </p>
@@ -132,42 +136,51 @@
     {% endfor %}
   </div>
 
+
   <!-- Пагинация -->
-  {% if stars.has_other_pages %}
-  <nav aria-label="Страницы" class="my-4">
-    <ul class="pagination justify-content-center">
-      {% if stars.has_previous %}
-      <li class="page-item">
-        <a class="page-link" href="?page={{ stars.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if name_filter %}&name={{ name_filter }}{% endif %}{% if country_filter %}&country={{ country_filter }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}">Предыдущая</a>
-      </li>
-      {% else %}
-      <li class="page-item disabled">
-        <span class="page-link">Предыдущая</span>
-      </li>
-      {% endif %}
+{% if stars.has_other_pages %}
+<nav aria-label="Страницы" class="my-4">
+  <ul class="pagination justify-content-center">
+    {% if stars.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ stars.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if name_filter %}&name={{ name_filter }}{% endif %}{% if country_filter %}&country={{ country_filter }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}">Предыдущая</a>
+    </li>
+    {% else %}
+    <li class="page-item disabled">
+      <span class="page-link">Предыдущая</span>
+    </li>
+    {% endif %}
 
-      {% for i in stars.paginator.page_range %}
-      {% if stars.number == i %}
-      <li class="page-item active">
-        <span class="page-link">{{ i }}</span>
-      </li>
-      {% else %}
-      <li class="page-item">
-        <a class="page-link" href="?page={{ i }}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if name_filter %}&name={{ name_filter }}{% endif %}{% if country_filter %}&country={{ country_filter }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}">{{ i }}</a>
-      </li>
-      {% endif %}
-      {% endfor %}
+    {% for i in page_range %}
+    {% if i %}
+    {% if stars.number == i %}
+    <li class="page-item active">
+      <span class="page-link">{{ i }}</span>
+    </li>
+    {% else %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ i }}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if name_filter %}&name={{ name_filter }}{% endif %}{% if country_filter %}&country={{ country_filter }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}">{{ i }}</a>
+    </li>
+    {% endif %}
+    {% else %}
+    <li class="page-item disabled">
+      <span class="page-link">...</span>
+    </li>
+    {% endif %}
+    {% endfor %}
 
-      {% if stars.has_next %}
-      <li class="page-item">
-        <a class="page-link" href="?page={{ stars.next_page_number }}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if name_filter %}&name={{ name_filter }}{% endif %}{% if country_filter %}&country={{ country_filter }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}">Следующая</a>
-      </li>
-      {% else %}
-      <li class="page-item disabled">
-        <span class="page-link">Следующая</span>
-      </li>
-      {% endif %}
-    </ul>
-  </nav>
-  {% endif %}
+    {% if stars.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ stars.next_page_number }}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if name_filter %}&name={{ name_filter }}{% endif %}{% if country_filter %}&country={{ country_filter }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}">Следующая</a>
+    </li>
+    {% else %}
+    <li class="page-item disabled">
+      <span class="page-link">Следующая</span>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+
 </div>

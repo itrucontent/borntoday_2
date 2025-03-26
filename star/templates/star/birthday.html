@@ -52,7 +52,11 @@
               {% for category in star.categories.all %}
               <span class="activity-tag">{{ category.title }}</span>
               {% endfor %}
-              <small class="text-muted ms-2">{{ star.country.name }}</small>
+             <small class="text-muted ms-2">
+  {% for country in star.countries.all %}
+  {{ country.name }}{% if not forloop.last %}, {% endif %}
+  {% endfor %}
+</small>
             </p>
             <p class="card-text small">
               {{ star.content|striptags|truncatechars:150 }}

@@ -50,10 +50,9 @@ class Category(models.Model):
 class Star(models.Model):
     name = models.CharField(max_length=100, verbose_name="Имя знаменитости")
     slug = models.SlugField(max_length=255, db_index=True, verbose_name="URL", unique=True)
-    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='stars', verbose_name="Связанные страны")
+    countries = models.ManyToManyField(Country, related_name='stars', verbose_name="Связанные страны")
     categories = models.ManyToManyField(Category, related_name='stars', verbose_name="Виды деятельности")
     birth_date = models.DateField(verbose_name="День рождения")
-    # Новые поля
     death_date = models.DateField(verbose_name="Дата смерти", blank=True, null=True)
     content = models.TextField(verbose_name="Биография")
     photo = models.ImageField(upload_to='photos/%Y/%m/%d/', blank=True, null=True, verbose_name="Фотография")

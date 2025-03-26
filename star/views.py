@@ -49,6 +49,122 @@ def get_calendar_days(year, month):
     return weeks
 
 
+def get_page_range(paginator, page, on_each_side=2, on_ends=1):
+    """
+    Возвращает ограниченный диапазон страниц для пагинации.
+    """
+    page_range = []
+
+    # Добавляем страницы в начале диапазона
+    for i in range(1, min(on_ends + 1, paginator.num_pages + 1)):
+        page_range.append(i)
+
+    # Страницы вокруг текущей
+    start = max(page.number - on_each_side, on_ends + 1)
+    end = min(page.number + on_each_side, paginator.num_pages - on_ends)
+
+    # Добавляем разделитель, если нужно
+    if start > on_ends + 1:
+        page_range.append(None)  # None будет представлять "..."
+
+    # Добавляем страницы вокруг текущей
+    for i in range(start, end + 1):
+        if i not in page_range:
+            page_range.append(i)
+
+    # Добавляем разделитель, если нужно
+    if end < paginator.num_pages - on_ends:
+        page_range.append(None)  # None будет представлять "..."
+
+    # Добавляем страницы в конце диапазона
+    for i in range(max(paginator.num_pages - on_ends + 1, end + 1), paginator.num_pages + 1):
+        if i not in page_range:
+            page_range.append(i)
+
+    return page_range
+
+
+def check_tag_viability(category_slug, country_slug):
+    """
+    Проверяет, содержит ли виртуальная категория достаточное количество знаменитостей.
+    """
+    try:
+        category = Category.objects.get(slug=category_slug)
+        country = Country.objects.get(slug=country_slug)
+
+        count = Star.objects.filter(
+            is_published=True,
+            categories=category,
+            countries=country
+        ).count()
+
+        return count >= 10
+    except (Category.DoesNotExist, Country.DoesNotExist):
+        return False
+
+
+def get_viable_tags(category, limit=None):
+    """
+    Возвращает список жизнеспособных виртуальных категорий для данной категории.
+    """
+    viable_tags = []
+
+    countries = Country.objects.all()
+    for country in countries:
+        count = Star.objects.filter(
+            is_published=True,
+            categories=category,
+            countries=country
+        ).count()
+
+        if count >= 10:
+            viable_tags.append({
+                'slug': f"{category.slug}-{country.slug}",
+                'name': country.name,
+                'count': count
+            })
+
+    # Сортируем по количеству знаменитостей
+    viable_tags.sort(key=lambda x: x['count'], reverse=True)
+
+    # Ограничиваем, если нужно
+    if limit and len(viable_tags) > limit:
+        viable_tags = viable_tags[:limit]
+
+    return viable_tags
+
+
+def get_viable_country_tags(country, limit=None):
+    """
+    Возвращает список жизнеспособных виртуальных категорий для данной страны.
+    """
+    viable_tags = []
+
+    categories = Category.objects.all()
+    for category in categories:
+        count = Star.objects.filter(
+            is_published=True,
+            categories=category,
+            countries=country
+        ).count()
+
+        if count >= 10:
+            viable_tags.append({
+                'slug': f"{category.slug}-{country.slug}",
+                'name': category.title,
+                'count': count
+            })
+
+    # Сортируем по количеству знаменитостей
+    viable_tags.sort(key=lambda x: x['count'], reverse=True)
+
+    # Ограничиваем, если нужно
+    if limit and len(viable_tags) > limit:
+        viable_tags = viable_tags[:limit]
+
+    return viable_tags
+
+
 def index(request):
     """Главная страница сайта."""
     # Получаем текущую дату
@@ -92,18 +208,38 @@ def star_detail(request, slug):
         is_published=True
     ).exclude(id=star.id).distinct().order_by('-rating')[:3]
 
-    # Получаем звезд из той же страны и категории (для сайдбара)
-    category = star.categories.first()
-    if category:
-        tag_slug = f"{category.slug}-{star.country.slug}"
-        tag_stars = Star.objects.filter(
-            categories=category,
-            country=star.country,
-            is_published=True
-        ).exclude(id=star.id).order_by('-rating')[:5]
-    else:
-        tag_slug = None
-        tag_stars = None
+    # Находим популярные виртуальные категории для этой звезды
+    popular_tag_blocks = []
+
+    # Проверяем все комбинации категорий и стран звезды
+    for category in star.categories.all():
+        for country in star.countries.all():
+            # Считаем количество знаменитостей в этой виртуальной категории
+            count = Star.objects.filter(
+                is_published=True,
+                categories=category,
+                countries=country
+            ).count()
+
+            # Если знаменитостей достаточно, добавляем блок
+            if count >= 10:
+                # Получаем примеры звезд для предпросмотра
+                preview_stars = Star.objects.filter(
+                    is_published=True,
+                    categories=category,
+                    countries=country
+                ).exclude(id=star.id).order_by('-rating')[:5]
+
+                popular_tag_blocks.append({
+                    'slug': f"{category.slug}-{country.slug}",
+                    'title': f"{category.title} из {country.name}",
+                    'count': count,
+                    'stars': preview_stars
+                })
+
+    # Сортируем блоки по количеству знаменитостей и берем топ-3
+    popular_tag_blocks.sort(key=lambda x: x['count'], reverse=True)
+    popular_tag_blocks = popular_tag_blocks[:3]
 
     # Получаем все страны и категории для формы фильтра
     countries = Country.objects.all()
@@ -112,8 +248,7 @@ def star_detail(request, slug):
     context = {
         'star': star,
         'similar_stars': similar_stars,
-        'tag_stars': tag_stars,
-        'tag_slug': tag_slug,
+        'popular_tag_blocks': popular_tag_blocks,
         'countries': countries,
         'categories': categories,
         'title': f"{star.name} - биография и день рождения",
@@ -152,7 +287,7 @@ def stars_by_country(request, slug):
     category_filter = request.GET.get('category', '')
 
     # Базовый набор знаменитостей этой страны
-    stars = Star.objects.filter(country=country, is_published=True)
+    stars = Star.objects.filter(countries=country, is_published=True)
 
     # Применяем дополнительные фильтры, если они указаны
     if name_filter:
@@ -174,11 +309,7 @@ def stars_by_country(request, slug):
         stars = stars.annotate(days_until_birthday=coming_birthday_days).order_by('days_until_birthday')
 
     # Получаем ТОП-10 виртуальных категорий для этой страны
-    top_categories = Category.objects.filter(
-        stars__country=country
-    ).distinct().annotate(
-        star_count=Count('stars')
-    ).order_by('-star_count')[:10]
+    viable_tags = get_viable_country_tags(country, limit=10)
 
     # Получаем другие популярные страны
     top_countries = Country.objects.exclude(id=country.id).annotate(
@@ -189,6 +320,7 @@ def stars_by_country(request, slug):
     paginator = Paginator(stars, 20)  # По 20 знаменитостей на страницу
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
+    page_range = get_page_range(paginator, page_obj)
 
     # Получаем все страны и категории для фильтров
     all_countries = Country.objects.all()
@@ -200,13 +332,14 @@ def stars_by_country(request, slug):
         'title': f"Знаменитости из {country.name}",
         'all_countries': all_countries,
         'all_categories': all_categories,
-        'top_categories': top_categories,
+        'viable_tags': viable_tags,
         'top_countries': top_countries,
         'sort_by': sort_by,
         'name_filter': name_filter,
         'country_filter': country_filter,
         'category_filter': category_filter,
         'total_count': stars.count(),
+        'page_range': page_range,
     }
     return render(request, 'star/country.html', context)
 
@@ -229,7 +362,7 @@ def stars_by_category(request, slug):
         stars = stars.filter(name__icontains=name_filter)
     if country_filter:
         country = get_object_or_404(Country, slug=country_filter)
-        stars = stars.filter(country=country)
+        stars = stars.filter(countries=country)
 
     # Применяем сортировку
     if sort_by == 'rating':
@@ -243,12 +376,8 @@ def stars_by_category(request, slug):
         coming_birthday_days = get_coming_birthday_order()
         stars = stars.annotate(days_until_birthday=coming_birthday_days).order_by('days_until_birthday')
 
-    # Получаем ТОП-10 стран для этой категории
-    top_countries = Country.objects.filter(
-        stars__categories=category
-    ).distinct().annotate(
-        star_count=Count('stars')
-    ).order_by('-star_count')[:10]
+    # Получаем жизнеспособные теги для этой категории
+    viable_tags = get_viable_tags(category, limit=10)
 
     # Получаем другие популярные категории
     top_categories = Category.objects.exclude(id=category.id).annotate(
@@ -259,6 +388,7 @@ def stars_by_category(request, slug):
     paginator = Paginator(stars, 20)  # По 20 знаменитостей на страницу
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
+    page_range = get_page_range(paginator, page_obj)
 
     # Получаем все страны и категории для фильтров
     all_countries = Country.objects.all()
@@ -270,13 +400,14 @@ def stars_by_category(request, slug):
         'title': f"Знаменитости: {category.title}",
         'all_countries': all_countries,
         'all_categories': all_categories,
-        'top_countries': top_countries,
+        'viable_tags': viable_tags,
         'top_categories': top_categories,
         'sort_by': sort_by,
         'name_filter': name_filter,
         'country_filter': country_filter,
         'category_filter': category_filter,
         'total_count': stars.count(),
+        'page_range': page_range,
     }
     return render(request, 'star/industry.html', context)
 
@@ -329,6 +460,7 @@ def search(request):
     paginator = Paginator(stars, 20)  # По 20 знаменитостей на страницу
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
+    page_range = get_page_range(paginator, page_obj)
 
     context = {
         'stars': page_obj,
@@ -337,6 +469,7 @@ def search(request):
         'top_categories': top_categories,
         'total_count': stars.count(),
         'title': f'Поиск: {query}' if query else 'Поиск',
+        'page_range': page_range,
     }
     return render(request, 'star/search.html', context)
 
@@ -378,6 +511,7 @@ def birthday(request, month=None, day=None):
     paginator = Paginator(stars, 20)  # По 20 знаменитостей на страницу
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
+    page_range = get_page_range(paginator, page_obj)
 
     context = {
         'stars': page_obj,
@@ -390,11 +524,9 @@ def birthday(request, month=None, day=None):
         'title': f'Дни рождения {day} {selected_date.strftime("%B")}',
         'total_count': stars.count(),
         'calendar_weeks': calendar_weeks,
+        'page_range': page_range,
     }
     return render(request, 'star/birthday.html', context)
-
-
-
 
 
 def dates(request):
@@ -440,7 +572,7 @@ def celebrities(request):
         stars = stars.filter(name__icontains=name_filter)
     if country_filter:
         country = get_object_or_404(Country, slug=country_filter)
-        stars = stars.filter(country=country)
+        stars = stars.filter(countries=country)
     if category_filter:
         category = get_object_or_404(Category, slug=category_filter)
         stars = stars.filter(categories=category)
@@ -470,6 +602,7 @@ def celebrities(request):
     paginator = Paginator(stars, 20)  # По 20 знаменитостей на страницу
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
+    page_range = get_page_range(paginator, page_obj)
 
     # Получаем все страны и категории для фильтров
     all_countries = Country.objects.all()
@@ -487,6 +620,7 @@ def celebrities(request):
         'country_filter': country_filter,
         'category_filter': category_filter,
         'total_count': stars.count(),
+        'page_range': page_range,
     }
     return render(request, 'star/celebrities.html', context)
 
@@ -502,19 +636,23 @@ def tag(request, tag_slug):
     country_slug = parts[-1]
     category_slug = '-'.join(parts[:-1])
 
+    # Проверяем жизнеспособность тега перед отображением
+    if not check_tag_viability(category_slug, country_slug):
+        return HttpResponseNotFound("Страница не найдена")
+
     # Получаем объекты категории и страны
     country = get_object_or_404(Country, slug=country_slug)
     category = get_object_or_404(Category, slug=category_slug)
 
-    # Получаем параметры сортировки
-    sort_by = request.GET.get('sort', 'birthday')
-
     # Получаем знаменитостей, соответствующих тегу
     stars = Star.objects.filter(
         is_published=True,
-        country=country,
+        countries=country,
         categories=category
     )
+
+    # Получаем параметры сортировки
+    sort_by = request.GET.get('sort', 'birthday')
 
     # Применяем сортировку
     if sort_by == 'rating':
@@ -526,10 +664,6 @@ def tag(request, tag_slug):
     elif sort_by == 'birthday':
         coming_birthday_days = get_coming_birthday_order()
         stars = stars.annotate(days_until_birthday=coming_birthday_days).order_by('days_until_birthday')
-
-    # Проверяем, что есть хотя бы 10 знаменитостей для этого тега
-    if stars.count() < 10:
-        return HttpResponseNotFound("Недостаточно знаменитостей для этого тега")
 
     # Получаем ТОП-20 стран и категорий для сайдбара
     top_countries = Country.objects.annotate(
@@ -544,6 +678,7 @@ def tag(request, tag_slug):
     paginator = Paginator(stars, 20)  # По 20 знаменитостей на страницу
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
+    page_range = get_page_range(paginator, page_obj)
 
     # Получаем все страны и категории для фильтров
     all_countries = Country.objects.all()
@@ -560,6 +695,7 @@ def tag(request, tag_slug):
         'top_categories': top_categories,
         'sort_by': sort_by,
         'total_count': stars.count(),
+        'page_range': page_range,
     }
     return render(request, 'star/tag.html', context)
 
@@ -612,11 +748,13 @@ def names_letter(request, letter):
     paginator = Paginator(stars, 200)  # По 200 знаменитостей на страницу
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
+    page_range = get_page_range(paginator, page_obj)
 
     context = {
         'stars': page_obj,
         'letter': letter.upper(),
         'title': f'Знаменитости на букву {letter.upper()}',
         'total_count': stars.count(),
+        'page_range': page_range,
     }
     return render(request, 'star/names-letter.html', context)
