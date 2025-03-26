@@ -1,0 +1,233 @@
+<!-- star/templates/star/birthday.html -->
+{% extends 'star/base.html' %}
+{% load static %}
+
+{% block title %}Дни рождения {{ selected_date|date:"d E" }} - Borntoday.ru{% endblock %}
+
+{% block content %}
+<div class="row">
+  <!-- Основной контент -->
+  <div class="col-lg-8">
+    <h1 class="mb-3">{{ selected_date|date:"d E" }} - дни рождения знаменитостей</h1>
+    <p class="lead">В этот день родилось {{ total_count }} знаменитостей</p>
+
+    <!-- Быстрая навигация по датам -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 bg-light p-3 rounded quick-nav">
+      <div>
+        <a href="{% url 'birthday' day_before_yesterday.month day_before_yesterday.day %}" class="btn btn-outline-secondary me-2">Позавчера</a>
+        <a href="{% url 'birthday' yesterday.month yesterday.day %}" class="btn btn-outline-secondary me-2">Вчера</a>
+        <a href="{% url 'birthday' today.month today.day %}" class="btn {% if selected_date.day == today.day and selected_date.month == today.month %}btn-primary{% else %}btn-outline-secondary{% endif %} me-2">Сегодня</a>
+        <a href="{% url 'birthday' tomorrow.month tomorrow.day %}" class="btn btn-outline-secondary me-2">Завтра</a>
+        <a href="{% url 'birthday' day_after_tomorrow.month day_after_tomorrow.day %}" class="btn btn-outline-secondary">Послезавтра</a>
+      </div>
+    </div>
+
+    <!-- Список знаменитостей -->
+    {% for star in stars %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-2 col-sm-3 text-center mb-3 mb-sm-0">
+            {% if star.photo %}
+            <img src="{{ star.photo.url }}" class="card-img-small" alt="{{ star.name }}">
+            {% else %}
+            <img src="{% static 'images/placeholder.jpg' %}" class="card-img-small" alt="{{ star.name }}">
+            {% endif %}
+          </div>
+          <div class="col">
+            <h5 class="card-title mb-1">
+              <a href="{% url 'star_detail' star.slug %}">{{ star.name }}</a>
+              <span class="text-muted">
+                {% if star.death_date %}
+                ({{ star.get_years_range }})
+                {% else %}
+                ({{ star.get_age }} лет)
+                {% endif %}
+              </span>
+            </h5>
+            <p class="card-text mb-2">
+              <small>Дата рождения: {{ star.birth_date|date:"d E Y" }}</small>
+            </p>
+            <p class="card-text mb-2">
+              {% for category in star.categories.all %}
+              <span class="activity-tag">{{ category.title }}</span>
+              {% endfor %}
+              <small class="text-muted ms-2">{{ star.country.name }}</small>
+            </p>
+            <p class="card-text small">
+              {{ star.content|striptags|truncatechars:150 }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="alert alert-info">
+      <p>В этот день не найдено знаменитостей с днем рождения.</p>
+    </div>
+    {% endfor %}
+
+    <!-- Пагинация (если много знаменитостей) -->
+    {% if stars.has_other_pages %}
+    <nav aria-label="Страницы" class="my-4">
+      <ul class="pagination justify-content-center">
+        {% if stars.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ stars.previous_page_number }}">Предыдущая</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+          <span class="page-link">Предыдущая</span>
+        </li>
+        {% endif %}
+
+        {% for i in stars.paginator.page_range %}
+        {% if stars.number == i %}
+        <li class="page-item active">
+          <span class="page-link">{{ i }}</span>
+        </li>
+        {% else %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+        </li>
+        {% endif %}
+        {% endfor %}
+
+        {% if stars.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ stars.next_page_number }}">Следующая</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+          <span class="page-link">Следующая</span>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+  </div>
+
+  <!-- Правая колонка -->
+  <div class="col-lg-4">
+    <!-- Поиск по дате -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="m-0">Поиск по дате</h5>
+      </div>
+      <div class="card-body">
+        <form action="{% url 'birthday' 1 1 %}" method="get" id="date-search-form">
+          <div class="mb-3">
+            <label for="day" class="form-label">День</label>
+            <input type="text" class="form-control" id="day" name="day" placeholder="1-31" value="{{ selected_date.day }}">
+          </div>
+          <div class="mb-3">
+            <label for="month" class="form-label">Месяц</label>
+            <select class="form-select" id="month" name="month">
+              {% for m in '123456789101112'|make_list %}
+              <option value="{{ m }}" {% if selected_date.month|stringformat:"i" == m %}selected{% endif %}>
+                {% if m == '1' %}Январь
+                {% elif m == '2' %}Февраль
+                {% elif m == '3' %}Март
+                {% elif m == '4' %}Апрель
+                {% elif m == '5' %}Май
+                {% elif m == '6' %}Июнь
+                {% elif m == '7' %}Июль
+                {% elif m == '8' %}Август
+                {% elif m == '9' %}Сентябрь
+                {% elif m == '10' %}Октябрь
+                {% elif m == '11' %}Ноябрь
+                {% elif m == '12' %}Декабрь
+                {% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="year" class="form-label">Год (необязательно)</label>
+            <input type="text" class="form-control" id="year" name="year" placeholder="например, 1980">
+          </div>
+          <button type="button" class="btn btn-primary w-100" onclick="submitDateSearch()">Подобрать</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Месяц текущей даты -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="m-0">{{ selected_date|date:"F Y" }}</h5>
+      </div>
+      <div class="card-body">
+        <!-- Мини-календарь с днями месяца -->
+        <div class="calendar-container">
+          {% for week in calendar_weeks %}
+          <div class="d-flex justify-content-between mb-2">
+            {% for day in week %}
+            {% if day.in_month %}
+            <a href="{% url 'birthday' selected_date.month day.number %}" class="day-badge {% if day.number == selected_date.day %}current{% endif %}">{{ day.number }}</a>
+            {% else %}
+            <span class="day-badge text-muted">{{ day.number }}</span>
+            {% endif %}
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card-footer d-flex justify-content-between">
+        {% with prev_month=selected_date|date:"n"|add:"-1"|default:"12" prev_year=selected_date|date:"Y"|add:"0" %}
+        <a href="{% url 'birthday' prev_month selected_date.day %}" class="btn btn-sm btn-outline-secondary">
+          &laquo;
+          {% if prev_month == '1' %}Январь
+          {% elif prev_month == '2' %}Февраль
+          {% elif prev_month == '3' %}Март
+          {% elif prev_month == '4' %}Апрель
+          {% elif prev_month == '5' %}Май
+          {% elif prev_month == '6' %}Июнь
+          {% elif prev_month == '7' %}Июль
+          {% elif prev_month == '8' %}Август
+          {% elif prev_month == '9' %}Сентябрь
+          {% elif prev_month == '10' %}Октябрь
+          {% elif prev_month == '11' %}Ноябрь
+          {% elif prev_month == '12' %}Декабрь
+          {% endif %}
+        </a>
+        {% endwith %}
+        <a href="{% url 'dates' %}" class="btn btn-sm btn-outline-primary">Календарь</a>
+        {% with next_month=selected_date|date:"n"|add:"1"|default:"1" next_year=selected_date|date:"Y"|add:"0" %}
+        <a href="{% url 'birthday' next_month selected_date.day %}" class="btn btn-sm btn-outline-secondary">
+          {% if next_month == '1' %}Январь
+          {% elif next_month == '2' %}Февраль
+          {% elif next_month == '3' %}Март
+          {% elif next_month == '4' %}Апрель
+          {% elif next_month == '5' %}Май
+          {% elif next_month == '6' %}Июнь
+          {% elif next_month == '7' %}Июль
+          {% elif next_month == '8' %}Август
+          {% elif next_month == '9' %}Сентябрь
+          {% elif next_month == '10' %}Октябрь
+          {% elif next_month == '11' %}Ноябрь
+          {% elif next_month == '12' %}Декабрь
+          {% endif %}
+          &raquo;
+        </a>
+        {% endwith %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+  function submitDateSearch() {
+    var day = document.getElementById('day').value;
+    var month = document.getElementById('month').value;
+    var year = document.getElementById('year').value;
+
+    if (day && month) {
+      window.location.href = '/birthday/' + month + '-' + day + (year ? '/' + year : '');
+    } else {
+      alert('Пожалуйста, укажите день и месяц');
+    }
+  }
+</script>
+{% endblock %}
+{% endblock %}

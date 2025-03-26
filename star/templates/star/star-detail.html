@@ -1,28 +1,191 @@
+<!-- star/templates/star/star-detail.html -->
 {% extends 'star/base.html' %}
-{% block title %}{{ star.name }} - Borntoday.ru{% endblock %}
+{% load static %}
+
+{% block title %}{{ star.name }} - биография и день рождения - Borntoday.ru{% endblock %}
 
 {% block content %}
-<h4 class="mb-3">Детальная информация</h4>
-<div class="card">
-  <div class="card-body">
-    <h5 class="card-title">{{ star.name }}</h5>
-    {% if star.photo %}
-      <img src="{{ star.photo.url }}" alt="{{ star.name }}" class="img-fluid mb-3" style="max-height: 300px;">
+<div class="row">
+  <!-- Основная информация о знаменитости -->
+  <div class="col-lg-8">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+      <h1>{{ star.name }}</h1>
+      <span class="rating-badge">{{ star.rating }}</span>
+    </div>
+
+    <div class="row mb-4">
+      <!-- Фото и основная информация -->
+      <div class="col-md-4">
+        {% if star.photo %}
+        <img src="{{ star.photo.url }}" class="celebrity-photo" alt="{{ star.name }}">
+        {% else %}
+        <img src="{% static 'images/placeholder.jpg' %}" class="celebrity-photo" alt="{{ star.name }}">
+        {% endif %}
+      </div>
+
+      <div class="col-md-8">
+        <!-- Основная информация -->
+        <div class="info-line">
+          <div class="info-label">Дата рождения:</div>
+          <div>{{ star.birth_date|date:"d E Y" }} ({{ star.get_age }} лет)</div>
+        </div>
+
+        <!-- Блок для умерших знаменитостей -->
+        {% if star.death_date %}
+        <div class="info-line">
+          <div class="info-label">Дата смерти:</div>
+          <div>{{ star.death_date|date:"d E Y" }}</div>
+        </div>
+        <div class="info-line">
+          <div class="info-label">Годы жизни:</div>
+          <div>{{ star.get_years_range }}</div>
+        </div>
+        {% endif %}
+
+        <div class="info-line">
+          <div class="info-label">Страны:</div>
+          <div>
+            <a href="{% url 'stars_by_country' star.country.slug %}" class="country-badge">{{ star.country.name }}</a>
+          </div>
+        </div>
+
+        <div class="info-line">
+          <div class="info-label">Род деятельности:</div>
+          <div>
+            {% for category in star.categories.all %}
+            <a href="{% url 'stars_by_category' category.slug %}" class="activity-tag">{{ category.title }}</a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Биография -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h2 class="fs-4 m-0">Биография</h2>
+      </div>
+      <div class="card-body">
+        {{ star.content|safe }}
+      </div>
+    </div>
+
+    <!-- Ссылки -->
+    <div class="mb-4">
+      <h3 class="fs-5">Узнать больше:</h3>
+      <ul>
+        {% if star.wikipedia %}
+        <li><a href="{{ star.wikipedia }}" target="_blank">{{ star.name }} в Википедии</a></li>
+        {% endif %}
+        {% if star.ruwiki %}
+        <li><a href="{{ star.ruwiki }}" target="_blank">{{ star.name }} на RuWiki</a></li>
+        {% endif %}
+      </ul>
+    </div>
+
+    <!-- Похожие знаменитости -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h3 class="fs-4 m-0">Похожие персоны</h3>
+      </div>
+      <div class="card-body">
+        {% for similar_star in similar_stars %}
+        <div class="card {% if not forloop.last %}mb-3{% endif %}">
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-2 col-sm-3 text-center mb-3 mb-sm-0">
+                {% if similar_star.photo %}
+                <img src="{{ similar_star.photo.url }}" class="card-img-small" alt="{{ similar_star.name }}">
+                {% else %}
+                <img src="{% static 'images/placeholder.jpg' %}" class="card-img-small" alt="{{ similar_star.name }}">
+                {% endif %}
+              </div>
+              <div class="col">
+                <h5 class="card-title mb-1">
+                  <a href="{% url 'star_detail' similar_star.slug %}">{{ similar_star.name }}</a>
+                  <span class="text-muted">
+                    {% if similar_star.death_date %}
+                    ({{ similar_star.get_years_range }})
+                    {% else %}
+                    ({{ similar_star.get_age }} лет)
+                    {% endif %}
+                  </span>
+                </h5>
+                <p class="card-text mb-2">
+                  <small>Дата рождения: {{ similar_star.birth_date|date:"d E Y" }}</small>
+                </p>
+                <p class="card-text mb-2">
+                  {% for category in similar_star.categories.all %}
+                  <span class="activity-tag">{{ category.title }}</span>
+                  {% endfor %}
+                  <small class="text-muted ms-2">{{ similar_star.country.name }}</small>
+                </p>
+                <p class="card-text small">
+                  {{ similar_star.content|striptags|truncatechars:100 }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <p>Нет похожих знаменитостей.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Правая колонка (фильтр) -->
+  <div class="col-lg-4">
+    <div class="filter-panel mb-4">
+      <h4 class="mb-3">Найти другие знаменитости</h4>
+      <form action="{% url 'search' %}" method="get">
+        <div class="mb-3">
+          <label for="name" class="form-label">Имя</label>
+          <input type="text" class="form-control" id="name" name="q" placeholder="Введите имя">
+        </div>
+        <div class="mb-3">
+          <label for="country" class="form-label">Страна</label>
+          <select class="form-select" id="country" name="country">
+            <option value="" selected>Все страны</option>
+            {% for country in countries %}
+            <option value="{{ country.slug }}">{{ country.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="activity" class="form-label">Вид деятельности</label>
+          <select class="form-select" id="activity" name="category">
+            <option value="" selected>Все виды</option>
+            {% for category in categories %}
+            <option value="{{ category.slug }}">{{ category.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Подобрать</button>
+      </form>
+    </div>
+
+    {% if tag_stars %}
+    <div class="card mb-4">
+      <div class="card-header">
+        <h4 class="fs-5 m-0">{{ star.categories.first.title }} {{ star.country.name }}</h4>
+      </div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+          {% for tag_star in tag_stars %}
+          <li class="list-group-item px-0">
+            <a href="{% url 'star_detail' tag_star.slug %}" class="text-decoration-none {% if tag_star.id == star.id %}fw-bold{% endif %}">
+              {{ tag_star.name }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="card-footer text-center">
+        <a href="{% url 'tag' tag_slug %}" class="btn btn-outline-primary btn-sm">Смотреть все</a>
+      </div>
+    </div>
     {% endif %}
-    <p class="card-text">
-      <strong>Дата рождения:</strong> {{ star.birth_date|date:"d E Y" }}<br>
-      <strong>Возраст:</strong> {{ star.get_age }} лет<br>
-      <strong>Страна:</strong> {{ star.country.name }}<br>
-      <strong>Вид деятельности:</strong>
-      {% for category in star.categories.all %}
-        {{ category.title }}{% if not forloop.last %}, {% endif %}
-      {% endfor %}<br>
-      <strong>Добавлен:</strong> {{ star.time_create|date:"d.m.Y H:i" }}<br>
-      <strong>Обновлен:</strong> {{ star.time_update|date:"d.m.Y H:i" }}<br>
-      <em>{{ star.content }}</em>
-    </p>
-    <a href="{% url 'star_index' %}" class="btn btn-primary">Вернуться к списку</a>
   </div>
 </div>
 {% endblock %}
-

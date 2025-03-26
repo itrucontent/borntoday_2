@@ -1,38 +1,205 @@
+<!-- star/templates/star/add-star.html -->
 {% extends 'star/base.html' %}
-{% block title %}{{ title }} - Borntoday.ru{% endblock %}
+{% load static %}
+
+{% block title %}Добавить знаменитость - Borntoday.ru{% endblock %}
 
 {% block content %}
-<h3 class="mb-4">{{ title }}</h3>
+<div class="row">
+  <!-- Основной контент - форма добавления знаменитости -->
+  <div class="col-lg-8">
+    <h1 class="mb-4">Добавить знаменитость</h1>
 
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}">
-            {{ message }}
-        </div>
-    {% endfor %}
-{% endif %}
-
-<form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    
-    {% for field in form %}
-    <div class="mb-3">
-        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-        {{ field }}
-        {% if field.help_text %}
-            <div class="form-text">{{ field.help_text }}</div>
-        {% endif %}
-        {% if field.errors %}
-            <div class="text-danger">
-                {% for error in field.errors %}
-                    {{ error }}
-                {% endfor %}
-            </div>
-        {% endif %}
+    <div class="alert alert-info">
+      <p><strong>Важно!</strong> Перед добавлением новой знаменитости, пожалуйста, проверьте, что она еще не добавлена в нашу базу данных.</p>
+      <p class="mb-0">Все новые записи проходят модерацию перед публикацией. Пожалуйста, ознакомьтесь с <a href="{% url 'rules' %}" class="alert-link">правилами сайта</a> перед заполнением формы.</p>
     </div>
-    {% endfor %}
-    
-    <button type="submit" class="btn btn-primary">Добавить</button>
-    <a href="{% url 'star_index' %}" class="btn btn-secondary">Отмена</a>
-</form>
+
+    {% if messages %}
+    <div class="messages">
+      {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <!-- Основная информация -->
+      <div class="form-section">
+        <h2 class="fs-4 mb-3">Основная информация</h2>
+
+        <div class="mb-3">
+          <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }} *</label>
+          {{ form.name }}
+          <div class="form-text">Укажите полное имя на русском языке, например: "Дэвид Бекхэм".</div>
+          {% if form.name.errors %}
+          <div class="text-danger">
+            {% for error in form.name.errors %}
+            {{ error }}
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6 mb-3 mb-md-0">
+            <label for="{{ form.birth_date.id_for_label }}" class="form-label">{{ form.birth_date.label }} *</label>
+            {{ form.birth_date }}
+            {% if form.birth_date.errors %}
+            <div class="text-danger">
+              {% for error in form.birth_date.errors %}
+              {{ error }}
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form.death_date.id_for_label }}" class="form-label">{{ form.death_date.label }}</label>
+            {{ form.death_date }}
+            <div class="form-text">Заполните только если человек уже умер.</div>
+            {% if form.death_date.errors %}
+            <div class="text-danger">
+              {% for error in form.death_date.errors %}
+              {{ error }}
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="{{ form.country.id_for_label }}" class="form-label">{{ form.country.label }} *</label>
+          {{ form.country }}
+          <div class="form-text">Выберите страну, с которой связана знаменитость.</div>
+          {% if form.country.errors %}
+          <div class="text-danger">
+            {% for error in form.country.errors %}
+            {{ error }}
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          <label for="{{ form.categories.id_for_label }}" class="form-label">{{ form.categories.label }} *</label>
+          {{ form.categories }}
+          <div class="form-text">Выберите один или несколько видов деятельности. Для выбора нескольких видов удерживайте клавишу Ctrl (Cmd на Mac).</div>
+          {% if form.categories.errors %}
+          <div class="text-danger">
+            {% for error in form.categories.errors %}
+            {{ error }}
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Фото и биография -->
+      <div class="form-section">
+        <h2 class="fs-4 mb-3">Фото и биография</h2>
+
+        <div class="mb-3">
+          <label for="{{ form.photo.id_for_label }}" class="form-label">{{ form.photo.label }}</label>
+          {{ form.photo }}
+          <div class="form-text">Загрузите качественную фотографию знаменитости. Рекомендуемый размер: не менее 500x500 пикселей.</div>
+          {% if form.photo.errors %}
+          <div class="text-danger">
+            {% for error in form.photo.errors %}
+            {{ error }}
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          <label for="{{ form.content.id_for_label }}" class="form-label">{{ form.content.label }} *</label>
+          {{ form.content }}
+          <div class="form-text">Введите биографию знаменитости (от 500 до 2000 символов). Проверьте текст на отсутствие ошибок.</div>
+          {% if form.content.errors %}
+          <div class="text-danger">
+            {% for error in form.content.errors %}
+            {{ error }}
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Ссылки на источники -->
+      <div class="form-section">
+        <h2 class="fs-4 mb-3">Ссылки на источники</h2>
+
+        <div class="mb-3">
+          <label for="{{ form.wikipedia.id_for_label }}" class="form-label">{{ form.wikipedia.label }}</label>
+          {{ form.wikipedia }}
+          {% if form.wikipedia.errors %}
+          <div class="text-danger">
+            {% for error in form.wikipedia.errors %}
+            {{ error }}
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          <label for="{{ form.ruwiki.id_for_label }}" class="form-label">{{ form.ruwiki.label }}</label>
+          {{ form.ruwiki }}
+          {% if form.ruwiki.errors %}
+          <div class="text-danger">
+            {% for error in form.ruwiki.errors %}
+            {{ error }}
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+        <button type="reset" class="btn btn-outline-secondary me-md-2">Очистить форму</button>
+        <button type="submit" class="btn btn-primary">Отправить</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Боковая колонка -->
+  <div class="col-lg-4 sidebar">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h3 class="fs-5 m-0">Полезные ссылки</h3>
+      </div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item">
+            <a href="{% url 'rules' %}" class="text-decoration-none">Правила сайта</a>
+          </li>
+          <li class="list-group-item">
+            <a href="{% url 'about' %}" class="text-decoration-none">О проекте</a>
+          </li>
+          <li class="list-group-item">
+            <a href="{% url 'names' %}" class="text-decoration-none">Карта сайта</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="fs-5 m-0">Советы по заполнению</h3>
+      </div>
+      <div class="card-body">
+        <ul>
+          <li>Проверьте, что знаменитость еще не добавлена в нашу базу данных.</li>
+          <li>Укажите точную дату рождения, если она известна.</li>
+          <li>Биография должна быть информативной и непредвзятой.</li>
+          <li>Загружайте качественные фотографии, желательно портретного типа.</li>
+          <li>Избегайте копирования текста из других источников без указания ссылки на оригинал.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

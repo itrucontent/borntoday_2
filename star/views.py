@@ -1,154 +1,622 @@
 from django.contrib import messages
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponseNotFound
+from django.db.models import Count, Q, F, Case, When, Value, IntegerField
+from django.core.paginator import Paginator
 from datetime import date, timedelta
+import calendar
 from .models import Star, Country, Category
-from .forms import StarForm
+from .forms import StarForm, ContactForm
+
+
+def get_coming_birthday_order():
+    """
+    Создает выражение для сортировки по ближайшему дню рождения.
+    """
+    today = date.today()
+    # Создаем выражение для подсчета дней до следующего дня рождения
+    return Case(
+        # Если день рождения еще впереди в этом году
+        When(
+            Q(birth_date__month__gt=today.month) |
+            Q(birth_date__month=today.month, birth_date__day__gt=today.day),
+            then=F('birth_date__month') * 31 + F('birth_date__day') - (today.month * 31 + today.day)
+        ),
+        # Если день рождения уже прошел в этом году, добавляем 365 дней
+        default=F('birth_date__month') * 31 + F('birth_date__day') + (365 - (today.month * 31 + today.day)),
+        output_field=IntegerField()
+    )
+
+
+def get_calendar_days(year, month):
+    """
+    Генерирует календарные дни для отображения в мини-календаре.
+    """
+    # Получаем календарь на месяц
+    cal = calendar.monthcalendar(year, month)
+
+    # Форматируем для шаблона
+    weeks = []
+    for week in cal:
+        days = []
+        for day in week:
+            if day == 0:
+                days.append({'number': '', 'in_month': False})
+            else:
+                days.append({'number': day, 'in_month': True})
+        weeks.append(days)
+
+    return weeks
 
 
 def index(request):
-    """
-    Главная страница: выводим все звёзды + выделяем, у кого сегодня/завтра/послезавтра день рождения.
-    """
-    # Получаем все опубликованные звезды
-    all_stars = Star.objects.filter(is_published=True)
-
+    """Главная страница сайта."""
     # Получаем текущую дату
     today = date.today()
     tomorrow = today + timedelta(days=1)
-    day_after_tomorrow = today + timedelta(days=2)
 
-    # Находим звезд с днями рождения
-    today_stars = []
-    tomorrow_stars = []
-    day_after_tomorrow_stars = []
+    # Находим звезд с днями рождения сегодня, сортируем по рейтингу
+    today_stars = Star.objects.filter(
+        is_published=True,
+        birth_date__month=today.month,
+        birth_date__day=today.day
+    ).order_by('-rating')[:12]
 
-    for star in all_stars:
-        # Проверяем месяц и день (без учета года)
-        if star.birth_date.month == today.month and star.birth_date.day == today.day:
-            today_stars.append(star)
-        elif star.birth_date.month == tomorrow.month and star.birth_date.day == tomorrow.day:
-            tomorrow_stars.append(star)
-        elif star.birth_date.month == day_after_tomorrow.month and star.birth_date.day == day_after_tomorrow.day:
-            day_after_tomorrow_stars.append(star)
-
-    # Получаем все страны и категории для меню
-    countries = Country.objects.all()
-    categories = Category.objects.all()
+    # Находим звезд с днями рождения завтра, сортируем по рейтингу
+    tomorrow_stars = Star.objects.filter(
+        is_published=True,
+        birth_date__month=tomorrow.month,
+        birth_date__day=tomorrow.day
+    ).order_by('-rating')[:8]
 
     context = {
-        'stars': all_stars,
         'today_stars': today_stars,
         'tomorrow_stars': tomorrow_stars,
-        'day_after_tomorrow_stars': day_after_tomorrow_stars,
         'today_date': today,
         'tomorrow_date': tomorrow,
-        'day_after_tomorrow_date': day_after_tomorrow,
-        'star_countries': countries,
-        'star_categories': categories,
-        'title': 'Дни рождения звезд'
+        'today_count': today_stars.count(),
+        'tomorrow_count': tomorrow_stars.count(),
+        'title': 'Дни рождения звезд',
     }
     return render(request, 'star/index.html', context)
 
 
 def star_detail(request, slug):
-    """
-    Детальная страница конкретной звезды: /person/<slug>/
-    """
+    """Детальная страница звезды."""
     # Получаем объект звезды по slug или выбрасываем 404 ошибку
     star = get_object_or_404(Star, slug=slug, is_published=True)
 
-    # Получаем все страны и категории для меню
+    # Получаем похожие звезды (с похожими категориями)
+    similar_stars = Star.objects.filter(
+        categories__in=star.categories.all(),
+        is_published=True
+    ).exclude(id=star.id).distinct().order_by('-rating')[:3]
+
+    # Получаем звезд из той же страны и категории (для сайдбара)
+    category = star.categories.first()
+    if category:
+        tag_slug = f"{category.slug}-{star.country.slug}"
+        tag_stars = Star.objects.filter(
+            categories=category,
+            country=star.country,
+            is_published=True
+        ).exclude(id=star.id).order_by('-rating')[:5]
+    else:
+        tag_slug = None
+        tag_stars = None
+
+    # Получаем все страны и категории для формы фильтра
     countries = Country.objects.all()
     categories = Category.objects.all()
 
     context = {
         'star': star,
-        'star_countries': countries,
-        'star_categories': categories,
+        'similar_stars': similar_stars,
+        'tag_stars': tag_stars,
+        'tag_slug': tag_slug,
+        'countries': countries,
+        'categories': categories,
+        'title': f"{star.name} - биография и день рождения",
     }
 
     return render(request, 'star/star-detail.html', context)
 
 
 def about(request):
-    """
-    Страница «О сайте».
-    """
-    # Получаем все страны и категории для меню
-    countries = Country.objects.all()
-    categories = Category.objects.all()
+    """Страница О сайте с формой обратной связи."""
+    if request.method == 'POST':
+        form = ContactForm(request.POST)
+        if form.is_valid():
+            # Здесь можно добавить логику отправки письма
+            messages.success(request, 'Ваше сообщение отправлено! Спасибо за обратную связь.')
+            return redirect('about')
+    else:
+        form = ContactForm()
 
     context = {
+        'form': form,
         'title': 'О сайте',
         'description': 'Сайт создан в учебных целях. Данные сгенерированы нейросетью.',
-        'star_countries': countries,
-        'star_categories': categories,
     }
     return render(request, 'star/about.html', context)
 
 
 def stars_by_country(request, slug):
+    """Страница знаменитостей по стране."""
     country = get_object_or_404(Country, slug=slug)
-    filtered_stars = Star.objects.filter(country=country, is_published=True)
 
-    countries = Country.objects.all()
-    categories = Category.objects.all()
+    # Получаем параметры сортировки и фильтрации
+    sort_by = request.GET.get('sort', 'birthday')  # по умолчанию сортировка по ближайшему дню рождения
+    name_filter = request.GET.get('name', '')
+    country_filter = request.GET.get('country', '')
+    category_filter = request.GET.get('category', '')
+
+    # Базовый набор знаменитостей этой страны
+    stars = Star.objects.filter(country=country, is_published=True)
+
+    # Применяем дополнительные фильтры, если они указаны
+    if name_filter:
+        stars = stars.filter(name__icontains=name_filter)
+    if category_filter:
+        category = get_object_or_404(Category, slug=category_filter)
+        stars = stars.filter(categories=category)
+
+    # Применяем сортировку
+    if sort_by == 'rating':
+        stars = stars.order_by('-rating')
+    elif sort_by == 'name_asc':
+        stars = stars.order_by('name')
+    elif sort_by == 'name_desc':
+        stars = stars.order_by('-name')
+    elif sort_by == 'birthday':
+        # Сортировка по ближайшему дню рождения
+        coming_birthday_days = get_coming_birthday_order()
+        stars = stars.annotate(days_until_birthday=coming_birthday_days).order_by('days_until_birthday')
+
+    # Получаем ТОП-10 виртуальных категорий для этой страны
+    top_categories = Category.objects.filter(
+        stars__country=country
+    ).distinct().annotate(
+        star_count=Count('stars')
+    ).order_by('-star_count')[:10]
+
+    # Получаем другие популярные страны
+    top_countries = Country.objects.exclude(id=country.id).annotate(
+        star_count=Count('stars')
+    ).order_by('-star_count')[:20]
+
+    # Пагинация
+    paginator = Paginator(stars, 20)  # По 20 знаменитостей на страницу
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    # Получаем все страны и категории для фильтров
+    all_countries = Country.objects.all()
+    all_categories = Category.objects.all()
 
     context = {
-        'stars': filtered_stars,
-        'country_name': country.name,
-        'star_countries': countries,
-        'star_categories': categories,
-        'title_template': 'Знаменитости из страны'
+        'stars': page_obj,
+        'country': country,
+        'title': f"Знаменитости из {country.name}",
+        'all_countries': all_countries,
+        'all_categories': all_categories,
+        'top_categories': top_categories,
+        'top_countries': top_countries,
+        'sort_by': sort_by,
+        'name_filter': name_filter,
+        'country_filter': country_filter,
+        'category_filter': category_filter,
+        'total_count': stars.count(),
     }
     return render(request, 'star/country.html', context)
 
 
 def stars_by_category(request, slug):
+    """Страница знаменитостей по категории."""
     category = get_object_or_404(Category, slug=slug)
-    filtered_stars = Star.objects.filter(categories=category, is_published=True)
 
-    countries = Country.objects.all()
-    categories = Category.objects.all()
+    # Получаем параметры сортировки и фильтрации
+    sort_by = request.GET.get('sort', 'birthday')  # по умолчанию сортировка по ближайшему дню рождения
+    name_filter = request.GET.get('name', '')
+    country_filter = request.GET.get('country', '')
+    category_filter = request.GET.get('category', '')
+
+    # Базовый набор знаменитостей этой категории
+    stars = Star.objects.filter(categories=category, is_published=True)
+
+    # Применяем дополнительные фильтры, если они указаны
+    if name_filter:
+        stars = stars.filter(name__icontains=name_filter)
+    if country_filter:
+        country = get_object_or_404(Country, slug=country_filter)
+        stars = stars.filter(country=country)
+
+    # Применяем сортировку
+    if sort_by == 'rating':
+        stars = stars.order_by('-rating')
+    elif sort_by == 'name_asc':
+        stars = stars.order_by('name')
+    elif sort_by == 'name_desc':
+        stars = stars.order_by('-name')
+    elif sort_by == 'birthday':
+        # Сортировка по ближайшему дню рождения
+        coming_birthday_days = get_coming_birthday_order()
+        stars = stars.annotate(days_until_birthday=coming_birthday_days).order_by('days_until_birthday')
+
+    # Получаем ТОП-10 стран для этой категории
+    top_countries = Country.objects.filter(
+        stars__categories=category
+    ).distinct().annotate(
+        star_count=Count('stars')
+    ).order_by('-star_count')[:10]
+
+    # Получаем другие популярные категории
+    top_categories = Category.objects.exclude(id=category.id).annotate(
+        star_count=Count('stars')
+    ).order_by('-star_count')[:10]
+
+    # Пагинация
+    paginator = Paginator(stars, 20)  # По 20 знаменитостей на страницу
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    # Получаем все страны и категории для фильтров
+    all_countries = Country.objects.all()
+    all_categories = Category.objects.all()
 
     context = {
-        'stars': filtered_stars,
-        'category_name': category.title,
-        'star_countries': countries,
-        'star_categories': categories,
-        'title_template': 'Знаменитости из отрасли',
+        'stars': page_obj,
+        'category': category,
+        'title': f"Знаменитости: {category.title}",
+        'all_countries': all_countries,
+        'all_categories': all_categories,
+        'top_countries': top_countries,
+        'top_categories': top_categories,
+        'sort_by': sort_by,
+        'name_filter': name_filter,
+        'country_filter': country_filter,
+        'category_filter': category_filter,
+        'total_count': stars.count(),
     }
     return render(request, 'star/industry.html', context)
 
 
-
-
-
 def add_star(request):
-    """
-    Представление для добавления новой знаменитости
-    """
+    """Представление для добавления новой знаменитости."""
     if request.method == 'POST':
         form = StarForm(request.POST, request.FILES)
         if form.is_valid():
             star = form.save(commit=False)
-            star.is_published = True
+            star.is_published = False  # Требует модерации
             star.save()
             form.save_m2m()  # Сохраняем связи many-to-many
-            messages.success(request, f'Знаменитость "{star.name}" успешно добавлена!')
-            return redirect('star_detail', slug=star.slug)
+            messages.success(request,
+                             f'Знаменитость "{star.name}" успешно добавлена и будет опубликована после модерации!')
+            return redirect('star_index')
     else:
         form = StarForm()
-
-    # Получаем все страны и категории для меню
-    countries = Country.objects.all()
-    categories = Category.objects.all()
 
     context = {
         'form': form,
         'title': 'Добавление знаменитости',
-        'star_countries': countries,
-        'star_categories': categories,
     }
     return render(request, 'star/add-star.html', context)
+
+
+def search(request):
+    """Представление для поиска знаменитостей."""
+    query = request.GET.get('q', '')
+
+    if query:
+        # Поиск только по имени
+        stars = Star.objects.filter(
+            is_published=True,
+            name__icontains=query
+        ).order_by('-rating')
+    else:
+        stars = Star.objects.none()
+
+    # Получаем ТОП-20 стран и категорий для сайдбара
+    top_countries = Country.objects.annotate(
+        star_count=Count('stars')
+    ).order_by('-star_count')[:20]
+
+    top_categories = Category.objects.annotate(
+        star_count=Count('stars')
+    ).order_by('-star_count')[:20]
+
+    # Пагинация
+    paginator = Paginator(stars, 20)  # По 20 знаменитостей на страницу
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'stars': page_obj,
+        'query': query,
+        'top_countries': top_countries,
+        'top_categories': top_categories,
+        'total_count': stars.count(),
+        'title': f'Поиск: {query}' if query else 'Поиск',
+    }
+    return render(request, 'star/search.html', context)
+
+
+def birthday(request, month=None, day=None):
+    """Страница с именинниками за определенную дату."""
+    today = date.today()
+
+    # Если дата не указана, используем сегодняшнюю
+    if month is None:
+        month = today.month
+    if day is None:
+        day = today.day
+
+    # Пытаемся создать дату для проверки валидности
+    try:
+        selected_date = date(today.year, int(month), int(day))
+    except ValueError:
+        # Если дата невалидна (например, 31 февраля), возвращаем 404
+        return HttpResponseNotFound("Неверная дата")
+
+    # Получаем знаменитостей, родившихся в эту дату
+    stars = Star.objects.filter(
+        is_published=True,
+        birth_date__month=month,
+        birth_date__day=day
+    ).order_by('-rating')
+
+    # Получаем соседние даты для навигации
+    yesterday = selected_date - timedelta(days=1)
+    day_before_yesterday = selected_date - timedelta(days=2)
+    tomorrow = selected_date + timedelta(days=1)
+    day_after_tomorrow = selected_date + timedelta(days=2)
+
+    # Генерируем календарь для текущего месяца
+    calendar_weeks = get_calendar_days(today.year, int(month))
+
+    # Пагинация
+    paginator = Paginator(stars, 20)  # По 20 знаменитостей на страницу
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'stars': page_obj,
+        'selected_date': selected_date,
+        'today': today,
+        'yesterday': yesterday,
+        'day_before_yesterday': day_before_yesterday,
+        'tomorrow': tomorrow,
+        'day_after_tomorrow': day_after_tomorrow,
+        'title': f'Дни рождения {day} {selected_date.strftime("%B")}',
+        'total_count': stars.count(),
+        'calendar_weeks': calendar_weeks,
+    }
+    return render(request, 'star/birthday.html', context)
+
+
+
+
+
+def dates(request):
+    """Страница календаря с датами."""
+    today = date.today()
+
+    # Получаем вчерашнюю, позавчерашнюю, завтрашнюю и послезавтрашнюю даты
+    yesterday = today - timedelta(days=1)
+    day_before_yesterday = today - timedelta(days=2)
+    tomorrow = today + timedelta(days=1)
+    day_after_tomorrow = today + timedelta(days=2)
+
+    # Генерируем календари для всех месяцев
+    calendars = {}
+    for month in range(1, 13):
+        calendars[month] = get_calendar_days(today.year, month)
+
+    context = {
+        'today': today,
+        'yesterday': yesterday,
+        'day_before_yesterday': day_before_yesterday,
+        'tomorrow': tomorrow,
+        'day_after_tomorrow': day_after_tomorrow,
+        'calendars': calendars,
+        'title': 'Календарь дней рождения',
+    }
+    return render(request, 'star/dates.html', context)
+
+
+def celebrities(request):
+    """Страница со всеми знаменитостями."""
+    # Получаем параметры сортировки и фильтрации
+    sort_by = request.GET.get('sort', 'rating')  # по умолчанию сортировка по рейтингу
+    name_filter = request.GET.get('name', '')
+    country_filter = request.GET.get('country', '')
+    category_filter = request.GET.get('category', '')
+
+    # Базовый набор знаменитостей
+    stars = Star.objects.filter(is_published=True)
+
+    # Применяем фильтры
+    if name_filter:
+        stars = stars.filter(name__icontains=name_filter)
+    if country_filter:
+        country = get_object_or_404(Country, slug=country_filter)
+        stars = stars.filter(country=country)
+    if category_filter:
+        category = get_object_or_404(Category, slug=category_filter)
+        stars = stars.filter(categories=category)
+
+    # Применяем сортировку
+    if sort_by == 'rating':
+        stars = stars.order_by('-rating')
+    elif sort_by == 'name_asc':
+        stars = stars.order_by('name')
+    elif sort_by == 'name_desc':
+        stars = stars.order_by('-name')
+    elif sort_by == 'birthday':
+        # Сортировка по ближайшему дню рождения
+        coming_birthday_days = get_coming_birthday_order()
+        stars = stars.annotate(days_until_birthday=coming_birthday_days).order_by('days_until_birthday')
+
+    # Получаем ТОП-20 стран и категорий
+    top_countries = Country.objects.annotate(
+        star_count=Count('stars')
+    ).order_by('-star_count')[:20]
+
+    top_categories = Category.objects.annotate(
+        star_count=Count('stars')
+    ).order_by('-star_count')[:20]
+
+    # Пагинация
+    paginator = Paginator(stars, 20)  # По 20 знаменитостей на страницу
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    # Получаем все страны и категории для фильтров
+    all_countries = Country.objects.all()
+    all_categories = Category.objects.all()
+
+    context = {
+        'stars': page_obj,
+        'title': 'Знаменитости',
+        'all_countries': all_countries,
+        'all_categories': all_categories,
+        'top_countries': top_countries,
+        'top_categories': top_categories,
+        'sort_by': sort_by,
+        'name_filter': name_filter,
+        'country_filter': country_filter,
+        'category_filter': category_filter,
+        'total_count': stars.count(),
+    }
+    return render(request, 'star/celebrities.html', context)
+
+
+def tag(request, tag_slug):
+    """Страница виртуальной категории (тега)."""
+    # Разбираем slug тега на категорию и страну
+    parts = tag_slug.split('-')
+    if len(parts) < 2:
+        return HttpResponseNotFound("Неверный формат тега")
+
+    # Последняя часть - страна, остальное - категория
+    country_slug = parts[-1]
+    category_slug = '-'.join(parts[:-1])
+
+    # Получаем объекты категории и страны
+    country = get_object_or_404(Country, slug=country_slug)
+    category = get_object_or_404(Category, slug=category_slug)
+
+    # Получаем параметры сортировки
+    sort_by = request.GET.get('sort', 'birthday')
+
+    # Получаем знаменитостей, соответствующих тегу
+    stars = Star.objects.filter(
+        is_published=True,
+        country=country,
+        categories=category
+    )
+
+    # Применяем сортировку
+    if sort_by == 'rating':
+        stars = stars.order_by('-rating')
+    elif sort_by == 'name_asc':
+        stars = stars.order_by('name')
+    elif sort_by == 'name_desc':
+        stars = stars.order_by('-name')
+    elif sort_by == 'birthday':
+        coming_birthday_days = get_coming_birthday_order()
+        stars = stars.annotate(days_until_birthday=coming_birthday_days).order_by('days_until_birthday')
+
+    # Проверяем, что есть хотя бы 10 знаменитостей для этого тега
+    if stars.count() < 10:
+        return HttpResponseNotFound("Недостаточно знаменитостей для этого тега")
+
+    # Получаем ТОП-20 стран и категорий для сайдбара
+    top_countries = Country.objects.annotate(
+        star_count=Count('stars')
+    ).order_by('-star_count')[:20]
+
+    top_categories = Category.objects.annotate(
+        star_count=Count('stars')
+    ).order_by('-star_count')[:20]
+
+    # Пагинация
+    paginator = Paginator(stars, 20)  # По 20 знаменитостей на страницу
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    # Получаем все страны и категории для фильтров
+    all_countries = Country.objects.all()
+    all_categories = Category.objects.all()
+
+    context = {
+        'stars': page_obj,
+        'country': country,
+        'category': category,
+        'title': f"{category.title} из {country.name}",
+        'all_countries': all_countries,
+        'all_categories': all_categories,
+        'top_countries': top_countries,
+        'top_categories': top_categories,
+        'sort_by': sort_by,
+        'total_count': stars.count(),
+    }
+    return render(request, 'star/tag.html', context)
+
+
+def rules(request):
+    """Страница с правилами сайта."""
+    context = {
+        'title': 'Правила сайта',
+        'today': date.today(),
+    }
+    return render(request, 'star/rules.html', context)
+
+
+def names(request):
+    """Страница карты сайта с алфавитным списком."""
+    # Получаем все буквы, с которых начинаются имена знаменитостей
+    letters = {}
+
+    # Для каждой буквы получаем первые 20 знаменитостей
+    for letter in 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЭЮЯ':
+        stars = Star.objects.filter(
+            is_published=True,
+            name__istartswith=letter
+        ).order_by('name')[:20]
+
+        # Добавляем букву в словарь только если есть знаменитости
+        if stars.exists():
+            letters[letter] = stars
+
+    context = {
+        'letters': letters,
+        'title': 'Карта сайта',
+    }
+    return render(request, 'star/names.html', context)
+
+
+def names_letter(request, letter):
+    """Страница со знаменитостями на определенную букву."""
+    # Получаем знаменитостей, имена которых начинаются с указанной буквы
+    stars = Star.objects.filter(
+        is_published=True,
+        name__istartswith=letter.upper()
+    ).order_by('name')
+
+    # Если нет знаменитостей на эту букву, возвращаем 404
+    if not stars.exists():
+        return HttpResponseNotFound(f"Нет знаменитостей на букву {letter.upper()}")
+
+    # Пагинация
+    paginator = Paginator(stars, 200)  # По 200 знаменитостей на страницу
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'stars': page_obj,
+        'letter': letter.upper(),
+        'title': f'Знаменитости на букву {letter.upper()}',
+        'total_count': stars.count(),
+    }
+    return render(request, 'star/names-letter.html', context)

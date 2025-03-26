@@ -1,0 +1,190 @@
+/* Общие стили */
+.brand-container {
+    min-width: 160px;
+}
+
+/* Стили для карточек знаменитостей */
+.celebrity-card {
+    height: 100%;
+    transition: transform 0.2s;
+}
+
+.celebrity-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-img-container {
+    height: 200px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+}
+
+.card-img-container img {
+    object-fit: cover;
+    height: 100%;
+    width: 100%;
+}
+
+.card-img-small {
+    width: 100%;
+    height: auto;
+    max-height: 100px;
+    object-fit: cover;
+}
+
+/* Стили для тегов видов деятельности */
+.activity-tag {
+    display: inline-block;
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 0.2rem 0.5rem;
+    margin-right: 0.3rem;
+    margin-bottom: 0.3rem;
+    border-radius: 0.25rem;
+    font-size: 0.85rem;
+}
+
+.country-badge {
+    display: inline-block;
+    background-color: #f8f9fa;
+    color: #495057;
+    padding: 0.3rem 0.6rem;
+    margin-right: 0.4rem;
+    margin-bottom: 0.4rem;
+    border-radius: 0.25rem;
+    text-decoration: none;
+    border: 1px solid #dee2e6;
+}
+
+.country-badge:hover {
+    background-color: #e9ecef;
+    color: #212529;
+}
+
+/* Стили для страницы с алфавитом */
+.letter-badge {
+    display: inline-block;
+    min-width: 2.5rem;
+    padding: 0.5rem;
+    margin: 0.2rem;
+    text-align: center;
+    font-weight: 500;
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
+    text-decoration: none;
+    color: #495057;
+}
+
+.letter-badge:hover,
+.letter-badge.active {
+    background-color: #0d6efd;
+    color: white;
+}
+
+/* Стили для списка имен */
+.names-container {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.name-item {
+    width: 50%;
+    padding: 0.3rem 0.5rem;
+}
+
+@media (min-width: 768px) {
+    .name-item {
+        width: 33.33%;
+    }
+}
+
+@media (min-width: 992px) {
+    .name-item {
+        width: 25%;
+    }
+}
+
+/* Стили для страницы со звездой */
+.celebrity-photo {
+    width: 100%;
+    height: auto;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+.info-line {
+    display: flex;
+    margin-bottom: 0.5rem;
+}
+
+.info-label {
+    min-width: 120px;
+    font-weight: 500;
+}
+
+.rating-badge {
+    display: inline-block;
+    background-color: #0d6efd;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 50%;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+/* Стили для календаря */
+.day-badge, .calendar-day {
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    line-height: 2rem;
+    text-align: center;
+    margin: 0.1rem;
+    border-radius: 50%;
+    background-color: #f8f9fa;
+    color: #495057;
+    text-decoration: none;
+}
+
+.day-badge:hover, .calendar-day:hover {
+    background-color: #dee2e6;
+}
+
+.day-badge.current, .calendar-day.highlight {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.month-header {
+    background-color: #e9ecef;
+}
+
+/* Стили для разделов правил */
+.rule-section {
+    margin-bottom: 2rem;
+}
+
+/* Стили для фильтров и форм */
+.filter-panel {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.preview-photo {
+    max-width: 100%;
+    max-height: 200px;
+    margin-top: 0.5rem;
+    display: none;
+}

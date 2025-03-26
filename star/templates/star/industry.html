@@ -1,25 +1,51 @@
-{% extends 'star/base.html' %}
-{% block title %}{{ title_template }} {{ category_name }} - Borntoday.ru{% endblock %}
+<!-- star/templates/star/industry.html -->
+{% extends 'star/category.html' %}
+{% load static %}
+
+{% block title %}{{ category.title }} - Borntoday.ru{% endblock %}
 
 {% block content %}
-<h4 class="mb-3">{{ title_template }}: {{ category_name }}</h4>
-{% if stars %}
-  {% for star in stars %}
-    <div class="card mb-3">
+<h1 class="mb-3">{{ category.title }}</h1>
+
+<div class="row">
+  <!-- Основной контент (используем базовый шаблон) -->
+  {% include "star/category_content.html" %}
+
+  <!-- Правая колонка (специфична для категории) -->
+  <div class="col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title m-0">{{ category.title }} по странам</h5>
+      </div>
       <div class="card-body">
-        <h5 class="card-title">
-          <a href="{% url 'star_detail' star.slug %}">{{ star.name }}</a> ({{ star.get_age }} лет)
-        </h5>
-        <p class="card-text">
-          <strong>Дата рождения:</strong> {{ star.birth_date|date:"d E Y" }}<br>
-          <strong>Страна:</strong> {{ star.country.name }}<br>
-          <em>{{ star.content }}</em>
-        </p>
+        <p>Выберите страну, чтобы увидеть знаменитых {{ category.title|lower }} из этой страны:</p>
+        <div class="d-flex flex-wrap">
+          {% for country in top_countries %}
+          <a href="{% url 'tag' category.slug|add:'-'|add:country.slug %}" class="category-badge">
+            {{ country.name }} ({{ country.star_count }})
+          </a>
+          {% endfor %}
+        </div>
       </div>
     </div>
-  {% endfor %}
-{% else %}
-  <p>Нет знаменитостей в этой категории.</p>
-{% endif %}
-{% endblock %}
 
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title m-0">Другие категории</h5>
+      </div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+          {% for other_category in top_categories %}
+          {% if other_category.id != category.id %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <a href="{% url 'stars_by_category' other_category.slug %}" class="text-decoration-none">{{ other_category.title }}</a>
+            <span class="badge bg-secondary rounded-pill">{{ other_category.star_count }}</span>
+          </li>
+          {% endif %}
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

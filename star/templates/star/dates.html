@@ -1,0 +1,110 @@
+<!-- star/templates/star/dates.html -->
+{% extends 'star/base.html' %}
+{% load static %}
+
+{% block title %}Календарь дней рождения - Borntoday.ru{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Календарь дней рождения</h1>
+
+<!-- Быстрая навигация по датам -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 bg-light p-3 rounded">
+  <div>
+    <a href="{% url 'birthday' day_before_yesterday.month day_before_yesterday.day %}" class="btn btn-outline-secondary me-2">Позавчера</a>
+    <a href="{% url 'birthday' yesterday.month yesterday.day %}" class="btn btn-outline-secondary me-2">Вчера</a>
+    <a href="{% url 'birthday' today.month today.day %}" class="btn btn-primary me-2">Сегодня</a>
+    <a href="{% url 'birthday' tomorrow.month tomorrow.day %}" class="btn btn-outline-secondary me-2">Завтра</a>
+    <a href="{% url 'birthday' day_after_tomorrow.month day_after_tomorrow.day %}" class="btn btn-outline-secondary">Послезавтра</a>
+  </div>
+  <div>
+    <span class="badge bg-primary">Сегодня: {{ today|date:"d E" }}</span>
+  </div>
+</div>
+
+<!-- Календарь -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4">
+  <!-- Январь -->
+  <div class="col">
+    <div class="card h-100">
+      <div class="card-header month-header">
+        <h5 class="card-title m-0">Январь</h5>
+      </div>
+          <div class="card-body">
+            {% for week in calendars.1 %}
+            <div class="d-flex justify-content-between mb-2">
+              {% for day in week %}
+              {% if day.in_month %}
+              <a href="{% url 'birthday' 1 day.number %}" class="calendar-day {% if today.month == 1 and today.day == day.number %}highlight{% endif %}">{{ day.number }}</a>
+              {% else %}
+              <span class="day-badge text-muted">{{ day.number }}</span>
+              {% endif %}
+              {% endfor %}
+            </div>
+            {% endfor %}
+          </div>
+
+
+    </div>
+  </div>
+
+  <!-- Добавьте аналогичные блоки для остальных месяцев (февраль-декабрь) -->
+  <!-- ... -->
+</div>
+
+<!-- Поиск по конкретной дате -->
+<div class="card mt-5">
+  <div class="card-header">
+    <h5 class="m-0">Поиск знаменитостей по дате рождения</h5>
+  </div>
+  <div class="card-body">
+    <form action="{% url 'birthday' 1 1 %}" method="get" id="date-search-form">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label for="day" class="form-label">День</label>
+          <input type="text" class="form-control" id="day" name="day" placeholder="1-31">
+        </div>
+        <div class="col-md-4">
+          <label for="month" class="form-label">Месяц</label>
+          <select class="form-select" id="month" name="month">
+            <option value="1">Январь</option>
+            <option value="2">Февраль</option>
+            <option value="3">Март</option>
+            <option value="4">Апрель</option>
+            <option value="5">Май</option>
+            <option value="6">Июнь</option>
+            <option value="7">Июль</option>
+            <option value="8">Август</option>
+            <option value="9">Сентябрь</option>
+            <option value="10">Октябрь</option>
+            <option value="11">Ноябрь</option>
+            <option value="12">Декабрь</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="year" class="form-label">Год (необязательно)</label>
+          <input type="text" class="form-control" id="year" name="year" placeholder="например, 1980">
+        </div>
+        <div class="col-12">
+          <button type="button" class="btn btn-primary" onclick="submitDateSearch()">Подобрать</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+  function submitDateSearch() {
+    var day = document.getElementById('day').value;
+    var month = document.getElementById('month').value;
+    var year = document.getElementById('year').value;
+
+    if (day && month) {
+      window.location.href = '/birthday/' + month + '-' + day + (year ? '/' + year : '');
+    } else {
+      alert('Пожалуйста, укажите день и месяц');
+    }
+  }
+</script>
+{% endblock %}
+{% endblock %}

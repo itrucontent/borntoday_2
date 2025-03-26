@@ -1,10 +1,40 @@
-<footer class="bg-light py-3 mt-4">
+<!-- star/templates/star/footer.html -->
+<footer class="bg-light py-4 mt-5">
   <div class="container">
     <div class="row">
+      <!-- Статистика и основные ссылки -->
+      <div class="col-md-4">
+        <p>Знаменитостей: {{ star_count }}</p>
+        <p>Именинники: {{ birthday_count }}</p>
+      </div>
+      <!-- Быстрые ссылки -->
+      <div class="col-md-7">
+        <div class="row">
+          <div class="col-md-4">
+            <ul class="nav flex-column">
+              <li class="nav-item"><a href="{% url 'celebrities' %}" class="nav-link ps-0">Знаменитости</a></li>
+              <li class="nav-item"><a href="{% url 'dates' %}" class="nav-link ps-0">Даты</a></li>
+            </ul>
+          </div>
+          <div class="col-md-4">
+            <ul class="nav flex-column">
+              <li class="nav-item"><a href="{% url 'names' %}" class="nav-link ps-0">Карта сайта</a></li>
+              <li class="nav-item"><a href="{% url 'add_star' %}" class="nav-link ps-0">Добавить знаменитость</a></li>
+            </ul>
+          </div>
+          <div class="col-md-4">
+            <ul class="nav flex-column">
+              <li class="nav-item"><a href="{% url 'about' %}" class="nav-link ps-0">О проекте</a></li>
+              <li class="nav-item"><a href="{% url 'rules' %}" class="nav-link ps-0">Правила сайта</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <hr>
+    <div class="row">
       <div class="col text-center">
-        <a href="{% url 'star_index' %}" class="mx-3">Главная</a>
-        <a href="{% url 'star_index' %}" class="mx-3">Все знаменитости</a>
-        <a href="{% url 'about' %}" class="mx-3">О сайте</a>
+        <p class="m-0">Содержимое сайта доступно по лицензии Creative Commons (CC BY-SA)</p>
       </div>
     </div>
   </div>

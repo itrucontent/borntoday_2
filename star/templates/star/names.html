@@ -1,0 +1,38 @@
+<!-- star/templates/star/names.html -->
+{% extends 'star/base.html' %}
+{% load static %}
+
+{% block title %}Карта сайта - Borntoday.ru{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Карта сайта</h1>
+
+<!-- Алфавитная навигация -->
+<div class="mb-4 text-center letter-navigation">
+  {% for letter, stars in letters.items %}
+  <a href="{% url 'names_letter' letter|lower %}" class="letter-badge">{{ letter }}</a>
+  {% endfor %}
+</div>
+
+<!-- Разделы карты сайта по буквам -->
+<div class="row">
+  {% for letter, stars in letters.items %}
+  <!-- Раздел по букве -->
+  <div class="col-12 mb-4">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+        <h2 class="fs-4 m-0">Знаменитости на букву {{ letter }}</h2>
+        <a href="{% url 'names_letter' letter|lower %}" class="btn btn-outline-primary btn-sm mt-2 mt-sm-0">Все знаменитости на {{ letter }}</a>
+      </div>
+      <div class="card-body">
+        <div class="names-container">
+          {% for star in stars %}
+          <div class="name-item"><a href="{% url 'star_detail' star.slug %}">{{ star.name }}</a></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

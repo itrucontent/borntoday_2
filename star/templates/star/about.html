@@ -1,9 +1,109 @@
+<!-- star/templates/star/about.html -->
 {% extends 'star/base.html' %}
-{% block title %}{{ title }} - Borntoday.ru{% endblock %}
+{% load static %}
+
+{% block title %}О сайте - Borntoday.ru{% endblock %}
 
 {% block content %}
-<h3>О сайте</h3>
-<p>
-{{ description  }}
-<p>
+<div class="row">
+  <!-- Основной контент -->
+  <div class="col-lg-8">
+    <h1 class="mb-4">О проекте Borntoday.ru</h1>
+
+    <div class="card mb-4">
+      <div class="card-body">
+        <h2 class="fs-4 mb-3">Наша миссия</h2>
+        <p>Проект Borntoday.ru создан для тех, кто интересуется биографиями знаменитостей и историческими фактами. Мы собираем информацию о днях рождения известных личностей со всего мира: актеров, музыкантов, спортсменов, политиков, ученых и многих других.</p>
+
+        <p>Наша цель - создать самую полную и удобную базу данных о днях рождения знаменитостей в рунете, которая будет интересна как для обычных пользователей, так и для исследователей, журналистов, студентов и школьников.</p>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-body">
+        <h2 class="fs-4 mb-3">История проекта</h2>
+        <p>Проект Borntoday.ru был основан в 2020 году группой энтузиастов с интересом к биографиям известных личностей. За это время мы собрали обширную базу данных, включающую более 1000 знаменитостей из разных стран и сфер деятельности.</p>
+
+        <p>Мы постоянно работаем над улучшением сайта, добавляем новые биографии, обновляем информацию и внедряем новые функции для более комфортного использования нашей платформы.</p>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-body">
+        <h2 class="fs-4 mb-3">Наша команда</h2>
+        <p>Над проектом работает команда единомышленников: редакторы, исследователи, веб-разработчики и дизайнеры. Мы стремимся предоставлять только проверенную и достоверную информацию.</p>
+
+        <p>Если вы заметили ошибку в информации или хотите предложить дополнение к биографии знаменитости, пожалуйста, напишите нам через форму обратной связи.</p>
+      </div>
+    </div>
+
+    <!-- Форма обратной связи -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="fs-4 m-0">Обратная связь</h2>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+
+          {% for field in form %}
+          <div class="mb-3">
+            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}
+            <div class="form-text">{{ field.help_text }}</div>
+            {% endif %}
+            {% if field.errors %}
+            <div class="text-danger">
+              {% for error in field.errors %}
+              {{ error }}
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+
+          <button type="submit" class="btn btn-primary">Отправить</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Боковая колонка -->
+  <div class="col-lg-4 mt-4 mt-lg-0">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h3 class="fs-5 m-0">Полезные ссылки</h3>
+      </div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item">
+            <a href="{% url 'rules' %}" class="text-decoration-none">Правила сайта</a>
+          </li>
+          <li class="list-group-item">
+            <a href="{% url 'add_star' %}" class="text-decoration-none">Добавить знаменитость</a>
+          </li>
+          <li class="list-group-item">
+            <a href="{% url 'names' %}" class="text-decoration-none">Карта сайта</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="fs-5 m-0">Интересные факты</h3>
+      </div>
+      <div class="card-body">
+        <p>Знаете ли вы, что:</p>
+        <ul>
+          <li>В нашей базе данных более {{ star_count }} знаменитостей со всего мира.</li>
+          <li>Больше всего известных людей родилось в октябре.</li>
+          <li>Самое большое количество звезд по виду деятельности - актеры и музыканты.</li>
+          <li>Каждый день мы добавляем новые биографии и обновляем информацию.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

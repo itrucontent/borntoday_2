@@ -1,0 +1,76 @@
+<!-- star/templates/star/names-letter.html -->
+{% extends 'star/base.html' %}
+{% load static %}
+
+{% block title %}Знаменитости на букву {{ letter }} - Borntoday.ru{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 flex-wrap">
+  <h1 class="mb-0 me-3">Знаменитости на букву {{ letter }}</h1>
+  <a href="{% url 'names' %}" class="btn btn-outline-secondary mt-2 mt-md-0">Вернуться к карте сайта</a>
+</div>
+
+<!-- Алфавитная навигация -->
+<div class="mb-4 text-center letter-navigation">
+  {% for l in 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЭЮЯ' %}
+  <a href="{% url 'names_letter' l|lower %}" class="letter-badge {% if letter == l %}active{% endif %}">{{ l }}</a>
+  {% endfor %}
+</div>
+
+<!-- Список знаменитостей на букву -->
+<div class="card">
+  <div class="card-body">
+    <p class="lead mb-4">Найдено {{ total_count }} знаменитостей на букву {{ letter }}</p>
+
+    <div class="names-container">
+      {% for star in stars %}
+      <div class="name-item">
+        <a href="{% url 'star_detail' star.slug %}">{{ star.name }}</a>
+        ({% for category in star.categories.all|slice:":1" %}{{ category.title }}{% endfor %}, {{ star.country.name }})
+      </div>
+      {% empty %}
+      <p>Не найдено знаменитостей на букву {{ letter }}.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Пагинация (если больше 200 знаменитостей) -->
+{% if stars.has_other_pages %}
+<nav aria-label="Страницы" class="my-4">
+  <ul class="pagination justify-content-center">
+    {% if stars.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ stars.previous_page_number }}">Предыдущая</a>
+    </li>
+    {% else %}
+    <li class="page-item disabled">
+      <span class="page-link">Предыдущая</span>
+    </li>
+    {% endif %}
+
+    {% for i in stars.paginator.page_range %}
+    {% if stars.number == i %}
+    <li class="page-item active">
+      <span class="page-link">{{ i }}</span>
+    </li>
+    {% else %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+    </li>
+    {% endif %}
+    {% endfor %}
+
+    {% if stars.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ stars.next_page_number }}">Следующая</a>
+    </li>
+    {% else %}
+    <li class="page-item disabled">
+      <span class="page-link">Следующая</span>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,48 @@
+<!-- star/templates/star/tag.html -->
+{% extends 'star/category.html' %}
+{% load static %}
+
+{% block title %}{{ category.title }} из {{ country.name }} - Borntoday.ru{% endblock %}
+
+{% block content %}
+<h1 class="mb-3">{{ category.title }} из {{ country.name }}</h1>
+
+<div class="row">
+  <!-- Основной контент (используем базовый шаблон) -->
+  {% include "star/category_content.html" %}
+
+  <!-- Правая колонка (для виртуальной категории) -->
+  <div class="col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title m-0">Популярные страны</h5>
+      </div>
+      <div class="card-body">
+        <div class="d-flex flex-wrap">
+          {% for top_country in top_countries %}
+          <a href="{% url 'stars_by_country' top_country.slug %}" class="category-badge">
+            {{ top_country.name }} ({{ top_country.star_count }})
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title m-0">Популярные категории</h5>
+      </div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+          {% for top_category in top_categories %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <a href="{% url 'stars_by_category' top_category.slug %}" class="text-decoration-none">{{ top_category.title }}</a>
+            <span class="badge bg-secondary rounded-pill">{{ top_category.star_count }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
