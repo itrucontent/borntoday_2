@@ -38,7 +38,7 @@ class Category(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             # Транслитерация имени с русского на английский
-            translit_name = translit(self.name, 'ru', reversed=True)
+            translit_name = translit(self.title, 'ru', reversed=True)
             # Приведение к нижнему регистру и замена пробелов на дефисы
             base_slug = slugify(translit_name)
 
