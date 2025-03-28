@@ -1,6 +1,7 @@
 <!-- star/templates/star/names-letter.html -->
 {% extends 'star/base.html' %}
 {% load static %}
+{% load star_tags %}
 
 {% block title %}Знаменитости на букву {{ letter }} - Borntoday.ru{% endblock %}
 
@@ -26,7 +27,12 @@
       {% for star in stars %}
       <div class="name-item">
         <a href="{% url 'star_detail' star.slug %}">{{ star.name }}</a>
-        ({% for category in star.categories.all|slice:":1" %}{{ category.title }}{% endfor %}, {{ star.country.name }})
+        {% if star.death_date %}
+          ({{ star.birth_date.year }}-{{ star.death_date.year }})
+        {% else %}
+          ({{ star.birth_date.year }}, {{ star.birth_date|calculate_age }} лет)
+        {% endif %}
+
       </div>
       {% empty %}
       <p>Не найдено знаменитостей на букву {{ letter }}.</p>
@@ -49,14 +55,14 @@
     </li>
     {% endif %}
 
-    {% for i in stars.paginator.page_range %}
-    {% if stars.number == i %}
-    <li class="page-item active">
-      <span class="page-link">{{ i }}</span>
+    {% for i in page_range %}
+    {% if i %}
+    <li class="page-item {% if stars.number == i %}active{% endif %}">
+      <a class="page-link" href="?page={{ i }}">{{ i }}</a>
     </li>
     {% else %}
-    <li class="page-item">
-      <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+    <li class="page-item disabled">
+      <span class="page-link">...</span>
     </li>
     {% endif %}
     {% endfor %}

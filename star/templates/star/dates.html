@@ -1,6 +1,9 @@
-<!-- star/templates/star/dates.html -->
 {% extends 'star/base.html' %}
 {% load static %}
+{% load star_tags %}
+
+<!-- star/templates/star/dates.html -->
+
 
 {% block title %}Календарь дней рождения - Borntoday.ru{% endblock %}
 
@@ -23,32 +26,28 @@
 
 <!-- Календарь -->
 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4">
-  <!-- Январь -->
+  {% for month_num, month_name in months %}
   <div class="col">
     <div class="card h-100">
       <div class="card-header month-header">
-        <h5 class="card-title m-0">Январь</h5>
+        <h5 class="card-title m-0">{{ month_name }}</h5>
       </div>
-          <div class="card-body">
-            {% for week in calendars.1 %}
-            <div class="d-flex justify-content-between mb-2">
-              {% for day in week %}
-              {% if day.in_month %}
-              <a href="{% url 'birthday' 1 day.number %}" class="calendar-day {% if today.month == 1 and today.day == day.number %}highlight{% endif %}">{{ day.number }}</a>
-              {% else %}
-              <span class="day-badge text-muted">{{ day.number }}</span>
-              {% endif %}
-              {% endfor %}
-            </div>
-            {% endfor %}
-          </div>
-
-
+      <div class="card-body">
+        {% for week in calendars|get_item:month_num %}
+        <div class="d-flex justify-content-between mb-2">
+          {% for day in week %}
+          {% if day.in_month %}
+          <a href="{% url 'birthday' month_num day.number %}" class="calendar-day {% if today.month == month_num and today.day == day.number %}highlight{% endif %}">{{ day.number }}</a>
+          {% else %}
+          <span class="day-badge text-muted">{{ day.number }}</span>
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
     </div>
   </div>
-
-  <!-- Добавьте аналогичные блоки для остальных месяцев (февраль-декабрь) -->
-  <!-- ... -->
+  {% endfor %}
 </div>
 
 <!-- Поиск по конкретной дате -->
@@ -94,17 +93,21 @@
 
 {% block extra_js %}
 <script>
-  function submitDateSearch() {
-    var day = document.getElementById('day').value;
-    var month = document.getElementById('month').value;
-    var year = document.getElementById('year').value;
+function submitDateSearch() {
+  var day = document.getElementById('day').value;
+  var month = document.getElementById('month').value;
+  var year = document.getElementById('year').value;
 
-    if (day && month) {
-      window.location.href = '/birthday/' + month + '-' + day + (year ? '/' + year : '');
-    } else {
-      alert('Пожалуйста, укажите день и месяц');
+  if (day && month) {
+    var url = '/birthday/' + month + '-' + day + '/';
+    if (year) {
+      url += '?year=' + year;
     }
+    window.location.href = url;
+  } else {
+    alert('Пожалуйста, укажите день и месяц');
   }
+}
 </script>
 {% endblock %}
 {% endblock %}

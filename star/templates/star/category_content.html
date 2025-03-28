@@ -1,21 +1,22 @@
 <!-- star/templates/star/category_content.html -->
 <!-- Этот шаблон включается в другие шаблоны для отображения общего содержимого -->
 {% load static %}
+
 <div class="col-lg-8">
   <!-- Фильтр -->
   <div class="filter-panel">
-    <form method="get" action="">
+    <form method="get" action="{% url 'search' %}">
       <div class="row">
         <div class="col-md-4 mb-3">
-          <label for="name" class="form-label">Имя</label>
-          <input type="text" class="form-control" id="name" name="name" placeholder="Введите имя" value="{{ name_filter|default:'' }}">
+          <label for="q" class="form-label">Имя</label>
+          <input type="text" class="form-control" id="q" name="q" placeholder="Введите имя" value="{{ name_filter|default:'' }}">
         </div>
         <div class="col-md-4 mb-3">
           <label for="country" class="form-label">Страна</label>
           <select class="form-select" id="country" name="country">
-            <option value="" selected>Все страны</option>
+            <option value="">Все страны</option>
             {% for country_obj in all_countries %}
-            <option value="{{ country_obj.slug }}" {% if country_filter == country_obj.slug %}selected{% endif %}>
+            <option value="{{ country_obj.slug }}" {% if country.slug == country_obj.slug %}selected{% endif %}>
               {{ country_obj.name }}
             </option>
             {% endfor %}
@@ -24,9 +25,9 @@
         <div class="col-md-4 mb-3">
           <label for="category" class="form-label">Вид деятельности</label>
           <select class="form-select" id="category" name="category">
-            <option value="" selected>Все виды</option>
+            <option value="">Все виды</option>
             {% for category_obj in all_categories %}
-            <option value="{{ category_obj.slug }}" {% if category_filter == category_obj.slug %}selected{% endif %}>
+            <option value="{{ category_obj.slug }}" {% if category.slug == category_obj.slug %}selected{% endif %}>
               {{ category_obj.title }}
             </option>
             {% endfor %}

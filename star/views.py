@@ -1,3 +1,5 @@
+import re
+
 from django.contrib import messages
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponseNotFound
@@ -5,7 +7,7 @@ from django.db.models import Count, Q, F, Case, When, Value, IntegerField
 from django.core.paginator import Paginator
 from datetime import date, timedelta
 import calendar
-from .models import Star, Country, Category
+from .models import Star, Country, Category, FeedbackMessage
 from .forms import StarForm, ContactForm
 
 
@@ -151,7 +153,8 @@ def get_viable_country_tags(country, limit=None):
         if count >= 10:
             viable_tags.append({
                 'slug': f"{category.slug}-{country.slug}",
-                'name': category.title,
+                'title': category.title,
+                'name': category.title,  # Добавляем для совместимости с шаблоном
                 'count': count
             })
 
@@ -202,14 +205,17 @@ def star_detail(request, slug):
     # Получаем объект звезды по slug или выбрасываем 404 ошибку
     star = get_object_or_404(Star, slug=slug, is_published=True)
 
-    # Получаем похожие звезды (с похожими категориями)
-    similar_stars = Star.objects.filter(
-        categories__in=star.categories.all(),
-        is_published=True
-    ).exclude(id=star.id).distinct().order_by('-rating')[:3]
+    # Удаляем блок "Похожие персоны", так как он больше не нужен
+    # similar_stars = Star.objects.filter(
+    #     categories__in=star.categories.all(),
+    #     is_published=True
+    # ).exclude(id=star.id).distinct().order_by('-rating')[:3]
 
     # Находим популярные виртуальные категории для этой звезды
     popular_tag_blocks = []
+
+    # Сет для хранения ID звезд, которые уже были добавлены в блоки
+    used_star_ids = {star.id}  # Добавляем текущую звезду, чтобы исключить ее
 
     # Проверяем все комбинации категорий и стран звезды
     for category in star.categories.all():
@@ -223,19 +229,28 @@ def star_detail(request, slug):
 
             # Если знаменитостей достаточно, добавляем блок
             if count >= 10:
-                # Получаем примеры звезд для предпросмотра
+                # Получаем примеры звезд для предпросмотра (берем больше, чтобы была возможность замены)
                 preview_stars = Star.objects.filter(
                     is_published=True,
                     categories=category,
                     countries=country
-                ).exclude(id=star.id).order_by('-rating')[:5]
+                ).exclude(id__in=used_star_ids).order_by('-rating')[:10]  # Берем больше для фильтрации
 
-                popular_tag_blocks.append({
-                    'slug': f"{category.slug}-{country.slug}",
-                    'title': f"{category.title} из {country.name}",
-                    'count': count,
-                    'stars': preview_stars
-                })
+                # Фильтруем, оставляя только не использованные ранее звезды
+                unique_preview_stars = []
+                for preview_star in preview_stars:
+                    if preview_star.id not in used_star_ids and len(unique_preview_stars) < 5:
+                        unique_preview_stars.append(preview_star)
+                        used_star_ids.add(preview_star.id)
+
+                # Если осталось хотя бы 3 уникальных звезды, создаем блок
+                if len(unique_preview_stars) >= 3:
+                    popular_tag_blocks.append({
+                        'slug': f"{category.slug}-{country.slug}",
+                        'title': f"{category.title} из {country.name}",
+                        'count': count,
+                        'stars': unique_preview_stars
+                    })
 
     # Сортируем блоки по количеству знаменитостей и берем топ-3
     popular_tag_blocks.sort(key=lambda x: x['count'], reverse=True)
@@ -247,7 +262,7 @@ def star_detail(request, slug):
 
     context = {
         'star': star,
-        'similar_stars': similar_stars,
+        # Удаляем 'similar_stars': similar_stars,
         'popular_tag_blocks': popular_tag_blocks,
         'countries': countries,
         'categories': categories,
@@ -262,7 +277,13 @@ def about(request):
     if request.method == 'POST':
         form = ContactForm(request.POST)
         if form.is_valid():
-            # Здесь можно добавить логику отправки письма
+            # Создаем новое сообщение обратной связи
+            FeedbackMessage.objects.create(
+                name=form.cleaned_data['name'],
+                email=form.cleaned_data['email'],
+                topic=form.cleaned_data['topic'],
+                message=form.cleaned_data['message']
+            )
             messages.success(request, 'Ваше сообщение отправлено! Спасибо за обратную связь.')
             return redirect('about')
     else:
@@ -272,6 +293,7 @@ def about(request):
         'form': form,
         'title': 'О сайте',
         'description': 'Сайт создан в учебных целях. Данные сгенерированы нейросетью.',
+        'star_count': Star.objects.filter(is_published=True).count(),  # Добавим счетчик опубликованных звезд
     }
     return render(request, 'star/about.html', context)
 
@@ -310,6 +332,7 @@ def stars_by_country(request, slug):
 
     # Получаем ТОП-10 виртуальных категорий для этой страны
     viable_tags = get_viable_country_tags(country, limit=10)
+    top_categories = viable_tags
 
     # Получаем другие популярные страны
     top_countries = Country.objects.exclude(id=country.id).annotate(
@@ -333,6 +356,7 @@ def stars_by_country(request, slug):
         'all_countries': all_countries,
         'all_categories': all_categories,
         'viable_tags': viable_tags,
+        'top_categories': top_categories,
         'top_countries': top_countries,
         'sort_by': sort_by,
         'name_filter': name_filter,
@@ -378,6 +402,7 @@ def stars_by_category(request, slug):
 
     # Получаем жизнеспособные теги для этой категории
     viable_tags = get_viable_tags(category, limit=10)
+    top_countries = viable_tags
 
     # Получаем другие популярные категории
     top_categories = Category.objects.exclude(id=category.id).annotate(
@@ -402,6 +427,7 @@ def stars_by_category(request, slug):
         'all_categories': all_categories,
         'viable_tags': viable_tags,
         'top_categories': top_categories,
+        'top_countries': top_countries,
         'sort_by': sort_by,
         'name_filter': name_filter,
         'country_filter': country_filter,
@@ -437,15 +463,38 @@ def add_star(request):
 def search(request):
     """Представление для поиска знаменитостей."""
     query = request.GET.get('q', '')
+    country_filter = request.GET.get('country', '')
+    category_filter = request.GET.get('category', '')
 
+    # Базовый набор знаменитостей
+    stars = Star.objects.filter(is_published=True)
+
+    # Применяем текстовый поиск если указан
     if query:
-        # Поиск только по имени
-        stars = Star.objects.filter(
-            is_published=True,
-            name__icontains=query
-        ).order_by('-rating')
-    else:
-        stars = Star.objects.none()
+        # Разбиваем запрос на отдельные слова
+        query_words = query.split()
+        q_objects = Q()
+
+        # Создаем OR запрос для каждого слова в имени
+        for word in query_words:
+            # Используем регулярное выражение для поиска без учета регистра
+            word_regex = r'(?i)' + re.escape(word)
+            q_objects |= Q(name__regex=word_regex)
+
+        stars = stars.filter(q_objects)
+
+    # Применяем фильтр по стране если указан
+    if country_filter:
+        country = get_object_or_404(Country, slug=country_filter)
+        stars = stars.filter(countries=country)
+
+    # Применяем фильтр по категории если указан
+    if category_filter:
+        category = get_object_or_404(Category, slug=category_filter)
+        stars = stars.filter(categories=category)
+
+    # Сортировка результатов
+    stars = stars.distinct().order_by('-rating')
 
     # Получаем ТОП-20 стран и категорий для сайдбара
     top_countries = Country.objects.annotate(
@@ -465,11 +514,15 @@ def search(request):
     context = {
         'stars': page_obj,
         'query': query,
+        'country_filter': country_filter,
+        'category_filter': category_filter,
         'top_countries': top_countries,
         'top_categories': top_categories,
         'total_count': stars.count(),
         'title': f'Поиск: {query}' if query else 'Поиск',
         'page_range': page_range,
+        'all_countries': Country.objects.all(),
+        'all_categories': Category.objects.all(),
     }
     return render(request, 'star/search.html', context)
 
@@ -477,6 +530,7 @@ def search(request):
 def birthday(request, month=None, day=None):
     """Страница с именинниками за определенную дату."""
     today = date.today()
+    year_filter = request.GET.get('year')
 
     # Если дата не указана, используем сегодняшнюю
     if month is None:
@@ -496,13 +550,23 @@ def birthday(request, month=None, day=None):
         is_published=True,
         birth_date__month=month,
         birth_date__day=day
-    ).order_by('-rating')
+    )
 
-    # Получаем соседние даты для навигации
-    yesterday = selected_date - timedelta(days=1)
-    day_before_yesterday = selected_date - timedelta(days=2)
-    tomorrow = selected_date + timedelta(days=1)
-    day_after_tomorrow = selected_date + timedelta(days=2)
+    # Фильтруем по году, если он указан
+    if year_filter:
+        try:
+            year = int(year_filter)
+            stars = stars.filter(birth_date__year=year)
+        except ValueError:
+            pass
+
+    stars = stars.order_by('-rating')
+
+    # Получаем соседние даты для навигации, но основываясь на сегодняшней дате
+    yesterday = today - timedelta(days=1)
+    day_before_yesterday = today - timedelta(days=2)
+    tomorrow = today + timedelta(days=1)
+    day_after_tomorrow = today + timedelta(days=2)
 
     # Генерируем календарь для текущего месяца
     calendar_weeks = get_calendar_days(today.year, int(month))
@@ -516,12 +580,13 @@ def birthday(request, month=None, day=None):
     context = {
         'stars': page_obj,
         'selected_date': selected_date,
+        'year_filter': year_filter,
         'today': today,
         'yesterday': yesterday,
         'day_before_yesterday': day_before_yesterday,
         'tomorrow': tomorrow,
         'day_after_tomorrow': day_after_tomorrow,
-        'title': f'Дни рождения {day} {selected_date.strftime("%B")}',
+        'title': f'Дни рождения {day} {selected_date.strftime("%B")}' + (f' {year_filter} года' if year_filter else ''),
         'total_count': stars.count(),
         'calendar_weeks': calendar_weeks,
         'page_range': page_range,
@@ -539,6 +604,22 @@ def dates(request):
     tomorrow = today + timedelta(days=1)
     day_after_tomorrow = today + timedelta(days=2)
 
+    # Список месяцев для шаблона
+    months = [
+        (1, 'Январь'),
+        (2, 'Февраль'),
+        (3, 'Март'),
+        (4, 'Апрель'),
+        (5, 'Май'),
+        (6, 'Июнь'),
+        (7, 'Июль'),
+        (8, 'Август'),
+        (9, 'Сентябрь'),
+        (10, 'Октябрь'),
+        (11, 'Ноябрь'),
+        (12, 'Декабрь')
+    ]
+
     # Генерируем календари для всех месяцев
     calendars = {}
     for month in range(1, 13):
@@ -551,6 +632,7 @@ def dates(request):
         'tomorrow': tomorrow,
         'day_after_tomorrow': day_after_tomorrow,
         'calendars': calendars,
+        'months': months,
         'title': 'Календарь дней рождения',
     }
     return render(request, 'star/dates.html', context)

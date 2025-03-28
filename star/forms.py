@@ -12,7 +12,7 @@ class StarForm(forms.ModelForm):
                   'content', 'photo', 'wikipedia', 'ruwiki']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'countries': forms.Select(attrs={'class': 'form-select'}),
+            'countries': forms.SelectMultiple(attrs={'class': 'form-select', 'size': '3'}),
             'categories': forms.SelectMultiple(attrs={'class': 'form-select', 'size': '3'}),
             'birth_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'death_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),

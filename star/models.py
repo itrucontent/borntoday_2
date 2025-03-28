@@ -113,3 +113,19 @@ class Star(models.Model):
         indexes = [
             models.Index(fields=['-time_create']),
         ]
+
+
+class FeedbackMessage(models.Model):
+    name = models.CharField(max_length=100, verbose_name="Имя")
+    email = models.EmailField(verbose_name="Email")
+    topic = models.CharField(max_length=20, verbose_name="Тема")
+    message = models.TextField(verbose_name="Сообщение")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+
+    def __str__(self):
+        return f"{self.name} - {self.topic} ({self.created_at.strftime('%d.%m.%Y')})"
+
+    class Meta:
+        verbose_name = "Сообщение обратной связи"
+        verbose_name_plural = "Сообщения обратной связи"
+        ordering = ['-created_at']

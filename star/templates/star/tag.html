@@ -20,7 +20,7 @@
       <div class="card-body">
         <div class="d-flex flex-wrap">
           {% for top_country in top_countries %}
-          <a href="{% url 'stars_by_country' top_country.slug %}" class="category-badge">
+          <a href="{% url 'stars_by_country' top_country.slug %}" class="country-badge">
             {{ top_country.name }} ({{ top_country.star_count }})
           </a>
           {% endfor %}

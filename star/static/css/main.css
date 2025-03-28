@@ -3,6 +3,8 @@
     min-width: 160px;
 }
 
+.active-link {font-weight: bold;}
+
 /* Стили для карточек знаменитостей */
 .celebrity-card {
     height: 100%;
@@ -135,6 +137,8 @@
     font-weight: bold;
     font-size: 1.2rem;
 }
+
+
 
 /* Стили для календаря */
 .day-badge, .calendar-day {

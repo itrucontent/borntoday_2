@@ -10,18 +10,38 @@
 <div class="row">
   <div class="col-lg-8">
     <!-- Форма поиска -->
-    <div class="filter-panel mb-4">
-      <form method="get" action="{% url 'search' %}">
-        <div class="row">
-          <div class="col-md-9">
-            <input type="text" class="form-control" name="q" placeholder="Введите имя знаменитости..." value="{{ query|default:'' }}">
-          </div>
-          <div class="col-md-3">
-            <button type="submit" class="btn btn-primary w-100">Найти</button>
-          </div>
-        </div>
-      </form>
+    <!-- Форма поиска и фильтрации -->
+<div class="filter-panel mb-4">
+  <form method="get" action="{% url 'search' %}">
+    <div class="row mb-3">
+      <div class="col-md-9">
+        <input type="text" class="form-control" name="q" placeholder="Введите имя знаменитости..." value="{{ query|default:'' }}">
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-primary w-100">Найти</button>
+      </div>
     </div>
+
+    <div class="row">
+      <div class="col-md-6 mb-2">
+        <select name="country" class="form-select">
+          <option value="">Выберите страну</option>
+          {% for country in all_countries %}
+          <option value="{{ country.slug }}" {% if country_filter == country.slug %}selected{% endif %}>{{ country.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6 mb-2">
+        <select name="category" class="form-select">
+          <option value="">Выберите категорию</option>
+          {% for category in all_categories %}
+          <option value="{{ category.slug }}" {% if category_filter == category.slug %}selected{% endif %}>{{ category.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </form>
+</div>
 
     <!-- Результаты поиска -->
     <div class="mb-3">
@@ -52,13 +72,14 @@
               </span>
             </h5>
             <p class="card-text mb-2">
-              <small>Дата рождения: {{ star.birth_date|date:"d E Y" }}</small>
-            </p>
-            <p class="card-text mb-2">
               {% for category in star.categories.all %}
               <span class="activity-tag">{{ category.title }}</span>
               {% endfor %}
-              <small class="text-muted ms-2">{{ star.country.name }}</small>
+              <small class="text-muted ms-2">
+                {% for country in star.countries.all %}
+                  {% if not forloop.first %}, {% endif %}{{ country.name }}
+                {% endfor %}
+              </small>
             </p>
             <p class="card-text small">
               {{ star.content|striptags|truncatechars:150 }}
@@ -83,9 +104,12 @@
     <nav aria-label="Страницы" class="my-4">
       <ul class="pagination justify-content-center">
         {% if stars.has_previous %}
-        <li class="page-item">
-          <a class="page-link" href="?q={{ query }}&page={{ stars.previous_page_number }}">Предыдущая</a>
-        </li>
+
+<li class="page-item">
+  <a class="page-link" href="?q={{ query }}&country={{ country_filter }}&category={{ category_filter }}&page={{ stars.previous_page_number }}">Предыдущая</a>
+</li>
+
+
         {% else %}
         <li class="page-item disabled">
           <span class="page-link">Предыдущая</span>
@@ -120,7 +144,24 @@
 
   <!-- Правая колонка -->
   <div class="col-lg-4">
+
     <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title m-0">Популярные страны</h5>
+      </div>
+      <div class="card-body">
+        <div class="d-flex flex-wrap">
+          {% for country in top_countries %}
+          <a href="{% url 'stars_by_country' country.slug %}" class="country-badge">
+            {{ country.name }} ({{ country.star_count }})
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+
+      <div class="card mb-4">
       <div class="card-header">
         <h5 class="card-title m-0">Популярные категории</h5>
       </div>
@@ -136,20 +177,7 @@
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header">
-        <h5 class="card-title m-0">Популярные страны</h5>
-      </div>
-      <div class="card-body">
-        <div class="d-flex flex-wrap">
-          {% for country in top_countries %}
-          <a href="{% url 'stars_by_country' country.slug %}" class="category-badge">
-            {{ country.name }} ({{ country.star_count }})
-          </a>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
+
   </div>
 </div>
 {% endblock %}

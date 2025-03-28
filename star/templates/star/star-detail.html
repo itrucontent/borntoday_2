@@ -82,59 +82,8 @@
       </ul>
     </div>
 
-    <!-- Похожие знаменитости -->
-    <div class="card mb-4">
-      <div class="card-header">
-        <h3 class="fs-4 m-0">Похожие персоны</h3>
-      </div>
-      <div class="card-body">
-        {% for similar_star in similar_stars %}
-        <div class="card {% if not forloop.last %}mb-3{% endif %}">
-          <div class="card-body">
-            <div class="row">
-              <div class="col-md-2 col-sm-3 text-center mb-3 mb-sm-0">
-                {% if similar_star.photo %}
-                <img src="{{ similar_star.photo.url }}" class="card-img-small" alt="{{ similar_star.name }}">
-                {% else %}
-                <img src="{% static 'images/placeholder.jpg' %}" class="card-img-small" alt="{{ similar_star.name }}">
-                {% endif %}
-              </div>
-              <div class="col">
-                <h5 class="card-title mb-1">
-                  <a href="{% url 'star_detail' similar_star.slug %}">{{ similar_star.name }}</a>
-                  <span class="text-muted">
-                    {% if similar_star.death_date %}
-                    ({{ similar_star.get_years_range }})
-                    {% else %}
-                    ({{ similar_star.get_age }} лет)
-                    {% endif %}
-                  </span>
-                </h5>
-                <p class="card-text mb-2">
-                  <small>Дата рождения: {{ similar_star.birth_date|date:"d E Y" }}</small>
-                </p>
-                <p class="card-text mb-2">
-                  {% for category in similar_star.categories.all %}
-                  <span class="activity-tag">{{ category.title }}</span>
-                  {% endfor %}
-                  <small class="text-muted ms-2">
-                    {% for country in similar_star.countries.all %}
-                    {{ country.name }}{% if not forloop.last %}, {% endif %}
-                    {% endfor %}
-                  </small>
-                </p>
-                <p class="card-text small">
-                  {{ similar_star.content|striptags|truncatechars:100 }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-        {% empty %}
-        <p>Нет похожих знаменитостей.</p>
-        {% endfor %}
-      </div>
-    </div>
+
+
   </div>
 
   <!-- Правая колонка (фильтр) -->

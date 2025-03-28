@@ -2,13 +2,13 @@
 {% extends 'star/base.html' %}
 {% load static %}
 
-{% block title %}Дни рождения {{ selected_date|date:"d E" }} - Borntoday.ru{% endblock %}
+{% block title %}Дни рождения {{ selected_date|date:"d E" }}{% if year_filter %} {{ year_filter }} года{% endif %} - Borntoday.ru{% endblock %}
 
 {% block content %}
 <div class="row">
   <!-- Основной контент -->
   <div class="col-lg-8">
-    <h1 class="mb-3">{{ selected_date|date:"d E" }} - дни рождения знаменитостей</h1>
+    <h1 class="mb-3">{{ selected_date|date:"d E" }}{% if year_filter %} {{ year_filter }} года{% endif %} - дни рождения знаменитостей</h1>
     <p class="lead">В этот день родилось {{ total_count }} знаменитостей</p>
 
     <!-- Быстрая навигация по датам -->
@@ -53,10 +53,10 @@
               <span class="activity-tag">{{ category.title }}</span>
               {% endfor %}
              <small class="text-muted ms-2">
-  {% for country in star.countries.all %}
-  {{ country.name }}{% if not forloop.last %}, {% endif %}
-  {% endfor %}
-</small>
+              {% for country in star.countries.all %}
+              {{ country.name }}{% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            </small>
             </p>
             <p class="card-text small">
               {{ star.content|striptags|truncatechars:150 }}
@@ -77,7 +77,7 @@
       <ul class="pagination justify-content-center">
         {% if stars.has_previous %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ stars.previous_page_number }}">Предыдущая</a>
+          <a class="page-link" href="?page={{ stars.previous_page_number }}{% if year_filter %}&year={{ year_filter }}{% endif %}">Предыдущая</a>
         </li>
         {% else %}
         <li class="page-item disabled">
@@ -85,21 +85,27 @@
         </li>
         {% endif %}
 
-        {% for i in stars.paginator.page_range %}
-        {% if stars.number == i %}
-        <li class="page-item active">
-          <span class="page-link">{{ i }}</span>
-        </li>
+        {% for i in page_range %}
+        {% if i %}
+          {% if stars.number == i %}
+          <li class="page-item active">
+            <span class="page-link">{{ i }}</span>
+          </li>
+          {% else %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ i }}{% if year_filter %}&year={{ year_filter }}{% endif %}">{{ i }}</a>
+          </li>
+          {% endif %}
         {% else %}
-        <li class="page-item">
-          <a class="page-link" href="?page={{ i }}">{{ i }}</a>
-        </li>
+          <li class="page-item disabled">
+            <span class="page-link">...</span>
+          </li>
         {% endif %}
         {% endfor %}
 
         {% if stars.has_next %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ stars.next_page_number }}">Следующая</a>
+          <a class="page-link" href="?page={{ stars.next_page_number }}{% if year_filter %}&year={{ year_filter }}{% endif %}">Следующая</a>
         </li>
         {% else %}
         <li class="page-item disabled">
@@ -126,29 +132,24 @@
           </div>
           <div class="mb-3">
             <label for="month" class="form-label">Месяц</label>
-            <select class="form-select" id="month" name="month">
-              {% for m in '123456789101112'|make_list %}
-              <option value="{{ m }}" {% if selected_date.month|stringformat:"i" == m %}selected{% endif %}>
-                {% if m == '1' %}Январь
-                {% elif m == '2' %}Февраль
-                {% elif m == '3' %}Март
-                {% elif m == '4' %}Апрель
-                {% elif m == '5' %}Май
-                {% elif m == '6' %}Июнь
-                {% elif m == '7' %}Июль
-                {% elif m == '8' %}Август
-                {% elif m == '9' %}Сентябрь
-                {% elif m == '10' %}Октябрь
-                {% elif m == '11' %}Ноябрь
-                {% elif m == '12' %}Декабрь
-                {% endif %}
-              </option>
-              {% endfor %}
-            </select>
+              <select class="form-select" id="month" name="month">
+                <option value="1" {% if selected_date.month == 1 %}selected{% endif %}>Январь</option>
+                <option value="2" {% if selected_date.month == 2 %}selected{% endif %}>Февраль</option>
+                <option value="3" {% if selected_date.month == 3 %}selected{% endif %}>Март</option>
+                <option value="4" {% if selected_date.month == 4 %}selected{% endif %}>Апрель</option>
+                <option value="5" {% if selected_date.month == 5 %}selected{% endif %}>Май</option>
+                <option value="6" {% if selected_date.month == 6 %}selected{% endif %}>Июнь</option>
+                <option value="7" {% if selected_date.month == 7 %}selected{% endif %}>Июль</option>
+                <option value="8" {% if selected_date.month == 8 %}selected{% endif %}>Август</option>
+                <option value="9" {% if selected_date.month == 9 %}selected{% endif %}>Сентябрь</option>
+                <option value="10" {% if selected_date.month == 10 %}selected{% endif %}>Октябрь</option>
+                <option value="11" {% if selected_date.month == 11 %}selected{% endif %}>Ноябрь</option>
+                <option value="12" {% if selected_date.month == 12 %}selected{% endif %}>Декабрь</option>
+              </select>
           </div>
           <div class="mb-3">
             <label for="year" class="form-label">Год (необязательно)</label>
-            <input type="text" class="form-control" id="year" name="year" placeholder="например, 1980">
+            <input type="text" class="form-control" id="year" name="year" placeholder="например, 1980" value="{{ year_filter|default:'' }}">
           </div>
           <button type="button" class="btn btn-primary w-100" onclick="submitDateSearch()">Подобрать</button>
         </form>
@@ -167,7 +168,7 @@
           <div class="d-flex justify-content-between mb-2">
             {% for day in week %}
             {% if day.in_month %}
-            <a href="{% url 'birthday' selected_date.month day.number %}" class="day-badge {% if day.number == selected_date.day %}current{% endif %}">{{ day.number }}</a>
+            <a href="{% url 'birthday' selected_date.month day.number %}{% if year_filter %}?year={{ year_filter }}{% endif %}" class="day-badge {% if day.number == selected_date.day %}current{% endif %}">{{ day.number }}</a>
             {% else %}
             <span class="day-badge text-muted">{{ day.number }}</span>
             {% endif %}
@@ -176,43 +177,137 @@
           {% endfor %}
         </div>
       </div>
+
       <div class="card-footer d-flex justify-content-between">
-        {% with prev_month=selected_date|date:"n"|add:"-1"|default:"12" prev_year=selected_date|date:"Y"|add:"0" %}
-        <a href="{% url 'birthday' prev_month selected_date.day %}" class="btn btn-sm btn-outline-secondary">
-          &laquo;
-          {% if prev_month == '1' %}Январь
-          {% elif prev_month == '2' %}Февраль
-          {% elif prev_month == '3' %}Март
-          {% elif prev_month == '4' %}Апрель
-          {% elif prev_month == '5' %}Май
-          {% elif prev_month == '6' %}Июнь
-          {% elif prev_month == '7' %}Июль
-          {% elif prev_month == '8' %}Август
-          {% elif prev_month == '9' %}Сентябрь
-          {% elif prev_month == '10' %}Октябрь
-          {% elif prev_month == '11' %}Ноябрь
-          {% elif prev_month == '12' %}Декабрь
+        {% with prev_month=selected_date.month|add:"-1"|default:12 prev_day=selected_date.day %}
+          {% if prev_month == 0 %}
+            {% with prev_month=12 %}
+              {% if prev_month == 2 %}
+                {% if prev_day > 28 %}
+                  {% with prev_day=28 %}
+                    <a href="{% url 'birthday' prev_month prev_day %}{% if year_filter %}?year={{ year_filter }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+                      &laquo; Февраль
+                    </a>
+                  {% endwith %}
+                {% else %}
+                  <a href="{% url 'birthday' prev_month prev_day %}{% if year_filter %}?year={{ year_filter }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+                    &laquo; Февраль
+                  </a>
+                {% endif %}
+              {% elif prev_month == 4 or prev_month == 6 or prev_month == 9 or prev_month == 11 %}
+                {% if prev_day > 30 %}
+                  {% with prev_day=30 %}
+                    <a href="{% url 'birthday' prev_month prev_day %}{% if year_filter %}?year={{ year_filter }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+                      &laquo;
+                      {% if prev_month == 4 %}Апрель
+                      {% elif prev_month == 6 %}Июнь
+                      {% elif prev_month == 9 %}Сентябрь
+                      {% elif prev_month == 11 %}Ноябрь
+                      {% endif %}
+                    </a>
+                  {% endwith %}
+                {% else %}
+                  <a href="{% url 'birthday' prev_month prev_day %}{% if year_filter %}?year={{ year_filter }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+                    &laquo;
+                    {% if prev_month == 4 %}Апрель
+                    {% elif prev_month == 6 %}Июнь
+                    {% elif prev_month == 9 %}Сентябрь
+                    {% elif prev_month == 11 %}Ноябрь
+                    {% endif %}
+                  </a>
+                {% endif %}
+              {% else %}
+                <a href="{% url 'birthday' prev_month prev_day %}{% if year_filter %}?year={{ year_filter }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+                  &laquo;
+                  {% if prev_month == 1 %}Январь
+                  {% elif prev_month == 3 %}Март
+                  {% elif prev_month == 5 %}Май
+                  {% elif prev_month == 7 %}Июль
+                  {% elif prev_month == 8 %}Август
+                  {% elif prev_month == 10 %}Октябрь
+                  {% elif prev_month == 12 %}Декабрь
+                  {% endif %}
+                </a>
+              {% endif %}
+            {% endwith %}
+          {% else %}
+            {% if prev_month == 2 %}
+              {% if prev_day > 28 %}
+                {% with prev_day=28 %}
+                  <a href="{% url 'birthday' prev_month prev_day %}{% if year_filter %}?year={{ year_filter }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+                    &laquo; Февраль
+                  </a>
+                {% endwith %}
+              {% else %}
+                <a href="{% url 'birthday' prev_month prev_day %}{% if year_filter %}?year={{ year_filter }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+                  &laquo; Февраль
+                </a>
+              {% endif %}
+            {% elif prev_month == 4 or prev_month == 6 or prev_month == 9 or prev_month == 11 %}
+              {% if prev_day > 30 %}
+                {% with prev_day=30 %}
+                  <a href="{% url 'birthday' prev_month prev_day %}{% if year_filter %}?year={{ year_filter }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+                    &laquo;
+                    {% if prev_month == 4 %}Апрель
+                    {% elif prev_month == 6 %}Июнь
+                    {% elif prev_month == 9 %}Сентябрь
+                    {% elif prev_month == 11 %}Ноябрь
+                    {% endif %}
+                  </a>
+                {% endwith %}
+              {% else %}
+                <a href="{% url 'birthday' prev_month prev_day %}{% if year_filter %}?year={{ year_filter }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+                  &laquo;
+                  {% if prev_month == 4 %}Апрель
+                  {% elif prev_month == 6 %}Июнь
+                  {% elif prev_month == 9 %}Сентябрь
+                  {% elif prev_month == 11 %}Ноябрь
+                  {% endif %}
+                </a>
+              {% endif %}
+            {% else %}
+              <a href="{% url 'birthday' prev_month prev_day %}{% if year_filter %}?year={{ year_filter }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+                &laquo;
+                {% if prev_month == 1 %}Январь
+                {% elif prev_month == 3 %}Март
+                {% elif prev_month == 5 %}Май
+                {% elif prev_month == 7 %}Июль
+                {% elif prev_month == 8 %}Август
+                {% elif prev_month == 10 %}Октябрь
+                {% elif prev_month == 12 %}Декабрь
+                {% endif %}
+              </a>
+            {% endif %}
           {% endif %}
-        </a>
         {% endwith %}
+
         <a href="{% url 'dates' %}" class="btn btn-sm btn-outline-primary">Календарь</a>
-        {% with next_month=selected_date|date:"n"|add:"1"|default:"1" next_year=selected_date|date:"Y"|add:"0" %}
-        <a href="{% url 'birthday' next_month selected_date.day %}" class="btn btn-sm btn-outline-secondary">
-          {% if next_month == '1' %}Январь
-          {% elif next_month == '2' %}Февраль
-          {% elif next_month == '3' %}Март
-          {% elif next_month == '4' %}Апрель
-          {% elif next_month == '5' %}Май
-          {% elif next_month == '6' %}Июнь
-          {% elif next_month == '7' %}Июль
-          {% elif next_month == '8' %}Август
-          {% elif next_month == '9' %}Сентябрь
-          {% elif next_month == '10' %}Октябрь
-          {% elif next_month == '11' %}Ноябрь
-          {% elif next_month == '12' %}Декабрь
+
+        {% with next_month=selected_date.month|add:"1"|default:1 %}
+          {% if next_month == 13 %}
+            {% with next_month=1 %}
+              <a href="{% url 'birthday' next_month 1 %}{% if year_filter %}?year={{ year_filter }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+                Январь &raquo;
+              </a>
+            {% endwith %}
+          {% else %}
+            <a href="{% url 'birthday' next_month 1 %}{% if year_filter %}?year={{ year_filter }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+              {% if next_month == 1 %}Январь
+              {% elif next_month == 2 %}Февраль
+              {% elif next_month == 3 %}Март
+              {% elif next_month == 4 %}Апрель
+              {% elif next_month == 5 %}Май
+              {% elif next_month == 6 %}Июнь
+              {% elif next_month == 7 %}Июль
+              {% elif next_month == 8 %}Август
+              {% elif next_month == 9 %}Сентябрь
+              {% elif next_month == 10 %}Октябрь
+              {% elif next_month == 11 %}Ноябрь
+              {% elif next_month == 12 %}Декабрь
+              {% endif %}
+              &raquo;
+            </a>
           {% endif %}
-          &raquo;
-        </a>
         {% endwith %}
       </div>
     </div>
@@ -221,17 +316,21 @@
 
 {% block extra_js %}
 <script>
-  function submitDateSearch() {
-    var day = document.getElementById('day').value;
-    var month = document.getElementById('month').value;
-    var year = document.getElementById('year').value;
+function submitDateSearch() {
+  var day = document.getElementById('day').value;
+  var month = document.getElementById('month').value;
+  var year = document.getElementById('year').value;
 
-    if (day && month) {
-      window.location.href = '/birthday/' + month + '-' + day + (year ? '/' + year : '');
-    } else {
-      alert('Пожалуйста, укажите день и месяц');
+  if (day && month) {
+    var url = '/birthday/' + month + '-' + day + '/';
+    if (year) {
+      url += '?year=' + year;
     }
+    window.location.href = url;
+  } else {
+    alert('Пожалуйста, укажите день и месяц');
   }
+}
 </script>
 {% endblock %}
 {% endblock %}
