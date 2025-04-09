@@ -9,6 +9,7 @@ from datetime import date, timedelta
 import calendar
 from .models import Star, Country, Category, FeedbackMessage
 from .forms import StarForm, ContactForm
+from .utils import GenitiveCountry
 
 
 def get_coming_birthday_order():
@@ -195,7 +196,7 @@ def index(request):
         'tomorrow_date': tomorrow,
         'today_count': today_stars.count(),
         'tomorrow_count': tomorrow_stars.count(),
-        'title': 'Дни рождения звезд',
+        'title': 'Дни рождения знаменитостей сегодня | Born Today',
     }
     return render(request, 'star/index.html', context)
 
@@ -205,36 +206,33 @@ def star_detail(request, slug):
     # Получаем объект звезды по slug или выбрасываем 404 ошибку
     star = get_object_or_404(Star, slug=slug, is_published=True)
 
-    # Удаляем блок "Похожие персоны", так как он больше не нужен
-    # similar_stars = Star.objects.filter(
-    #     categories__in=star.categories.all(),
-    #     is_published=True
-    # ).exclude(id=star.id).distinct().order_by('-rating')[:3]
+    # Сет для хранения ID звезд, которые уже были добавлены в блоки
+    used_star_ids = {star.id}  # Добавляем текущую звезду, чтобы исключить ее
 
     # Находим популярные виртуальные категории для этой звезды
     popular_tag_blocks = []
 
-    # Сет для хранения ID звезд, которые уже были добавлены в блоки
-    used_star_ids = {star.id}  # Добавляем текущую звезду, чтобы исключить ее
-
     # Проверяем все комбинации категорий и стран звезды
     for category in star.categories.all():
         for country in star.countries.all():
+            # Создаем обертку для отображения в название блока
+            genitive_country = GenitiveCountry(country)
+
             # Считаем количество знаменитостей в этой виртуальной категории
             count = Star.objects.filter(
                 is_published=True,
                 categories=category,
-                countries=country
+                countries=country  # Используем оригинальный объект
             ).count()
 
             # Если знаменитостей достаточно, добавляем блок
             if count >= 10:
-                # Получаем примеры звезд для предпросмотра (берем больше, чтобы была возможность замены)
+                # Получаем примеры звезд для предпросмотра
                 preview_stars = Star.objects.filter(
                     is_published=True,
                     categories=category,
-                    countries=country
-                ).exclude(id__in=used_star_ids).order_by('-rating')[:10]  # Берем больше для фильтрации
+                    countries=country  # Используем оригинальный объект
+                ).exclude(id__in=used_star_ids).order_by('-rating')[:10]
 
                 # Фильтруем, оставляя только не использованные ранее звезды
                 unique_preview_stars = []
@@ -247,7 +245,7 @@ def star_detail(request, slug):
                 if len(unique_preview_stars) >= 3:
                     popular_tag_blocks.append({
                         'slug': f"{category.slug}-{country.slug}",
-                        'title': f"{category.title} из {country.name}",
+                        'title': f"{category.title} из {genitive_country.name}",  # Используем обертку для названия
                         'count': count,
                         'stars': unique_preview_stars
                     })
@@ -262,7 +260,6 @@ def star_detail(request, slug):
 
     context = {
         'star': star,
-        # Удаляем 'similar_stars': similar_stars,
         'popular_tag_blocks': popular_tag_blocks,
         'countries': countries,
         'categories': categories,
@@ -298,9 +295,10 @@ def about(request):
     return render(request, 'star/about.html', context)
 
 
+# Модифицируем представление для страны
 def stars_by_country(request, slug):
     """Страница знаменитостей по стране."""
-    country = get_object_or_404(Country, slug=slug)
+    country_obj = get_object_or_404(Country, slug=slug)
 
     # Получаем параметры сортировки и фильтрации
     sort_by = request.GET.get('sort', 'birthday')  # по умолчанию сортировка по ближайшему дню рождения
@@ -308,8 +306,8 @@ def stars_by_country(request, slug):
     country_filter = request.GET.get('country', '')
     category_filter = request.GET.get('category', '')
 
-    # Базовый набор знаменитостей этой страны
-    stars = Star.objects.filter(countries=country, is_published=True)
+    # Базовый набор знаменитостей этой страны - используем оригинальный объект
+    stars = Star.objects.filter(countries=country_obj, is_published=True)
 
     # Применяем дополнительные фильтры, если они указаны
     if name_filter:
@@ -331,11 +329,11 @@ def stars_by_country(request, slug):
         stars = stars.annotate(days_until_birthday=coming_birthday_days).order_by('days_until_birthday')
 
     # Получаем ТОП-10 виртуальных категорий для этой страны
-    viable_tags = get_viable_country_tags(country, limit=10)
+    viable_tags = get_viable_country_tags(country_obj, limit=10)
     top_categories = viable_tags
 
     # Получаем другие популярные страны
-    top_countries = Country.objects.exclude(id=country.id).annotate(
+    top_countries = Country.objects.exclude(id=country_obj.id).annotate(
         star_count=Count('stars')
     ).order_by('-star_count')[:20]
 
@@ -349,9 +347,13 @@ def stars_by_country(request, slug):
     all_countries = Country.objects.all()
     all_categories = Category.objects.all()
 
+    # Создаем обертку для отображения в шаблоне
+    country = GenitiveCountry(country_obj)
+
     context = {
         'stars': page_obj,
-        'country': country,
+        'country': country,  # Используем обертку для шаблона
+        'country_obj': country_obj,  # Оригинальный объект, если нужен для сравнений
         'title': f"Знаменитости из {country.name}",
         'all_countries': all_countries,
         'all_categories': all_categories,
@@ -707,6 +709,7 @@ def celebrities(request):
     return render(request, 'star/celebrities.html', context)
 
 
+# Модифицируем представление для тега (комбинация категории и страны)
 def tag(request, tag_slug):
     """Страница виртуальной категории (тега)."""
     # Разбираем slug тега на категорию и страну
@@ -723,13 +726,13 @@ def tag(request, tag_slug):
         return HttpResponseNotFound("Страница не найдена")
 
     # Получаем объекты категории и страны
-    country = get_object_or_404(Country, slug=country_slug)
+    country_obj = get_object_or_404(Country, slug=country_slug)
     category = get_object_or_404(Category, slug=category_slug)
 
-    # Получаем знаменитостей, соответствующих тегу
+    # Получаем знаменитостей, соответствующих тегу - используем оригинальный объект
     stars = Star.objects.filter(
         is_published=True,
-        countries=country,
+        countries=country_obj,
         categories=category
     )
 
@@ -757,7 +760,7 @@ def tag(request, tag_slug):
     ).order_by('-star_count')[:20]
 
     # Пагинация
-    paginator = Paginator(stars, 20)  # По 20 знаменитостей на страницу
+    paginator = Paginator(stars, 20)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
     page_range = get_page_range(paginator, page_obj)
@@ -766,9 +769,13 @@ def tag(request, tag_slug):
     all_countries = Country.objects.all()
     all_categories = Category.objects.all()
 
+    # Создаем обертку для отображения в шаблоне
+    country = GenitiveCountry(country_obj)
+
     context = {
         'stars': page_obj,
-        'country': country,
+        'country': country,  # Используем обертку для шаблона
+        'country_obj': country_obj,  # Оригинальный объект, если нужен для сравнений
         'category': category,
         'title': f"{category.title} из {country.name}",
         'all_countries': all_countries,

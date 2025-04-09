@@ -5,6 +5,7 @@ from transliterate import translit
 
 class Country(models.Model):
     name = models.CharField(max_length=100)
+    name_2 = models.CharField(max_length=100, blank=True, verbose_name="Название в родительном падеже")
     slug = models.SlugField(max_length=255, blank=True, db_index=True, verbose_name="URL", unique=True)
 
     def __str__(self):
@@ -24,6 +25,7 @@ class Country(models.Model):
             self.slug = slug
 
         super().save(*args, **kwargs)
+
 
 class Category(models.Model):
     title = models.CharField(max_length=100)

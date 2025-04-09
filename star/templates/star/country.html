@@ -1,8 +1,7 @@
-<!-- star/templates/star/country.html -->
 {% extends 'star/category.html' %}
 {% load static %}
 
-{% block title %}Знаменитости из {{ country.name }} - Borntoday.ru{% endblock %}
+{% block title %}Знаменитости из {{ country.name }} - звезды кино, спорта и шоу-бизнеса, известные политики и ученые | Born Today{% endblock %}
 
 {% block content %}
 <h1 class="mb-3">Знаменитости из {{ country.name }}</h1>
@@ -20,7 +19,7 @@
       <div class="card-body">
         <div class="d-flex flex-wrap">
           {% for other_country in top_countries %}
-          {% if other_country.id != country.id %}
+          {% if other_country.id != country_obj.id %}
           <a href="{% url 'stars_by_country' other_country.slug %}" class="country-badge">
             {{ other_country.name }} ({{ other_country.star_count }})
           </a>
