@@ -45,7 +45,7 @@ def copy_image(img_filename, star_name):
         return None
 
     # Путь к исходному файлу
-    source_path = os.path.join('img', img_filename)
+    source_path = os.path.join('img-2', img_filename)
 
     # Проверяем, что файл существует
     if not os.path.exists(source_path):
@@ -84,17 +84,26 @@ def copy_image(img_filename, star_name):
 
 
 def clear_database():
-    """Очищает базу данных от существующих записей."""
-    confirmation = input("Вы уверены, что хотите удалить ВСЕ существующие данные? (y/n): ")
+    """Очищает базу данных от всех записей знаменитостей, категорий и стран."""
+    confirmation = input(
+        "Вы уверены, что хотите удалить ВСЕ существующие данные (знаменитости, категории и страны)? (y/n): ")
     if confirmation.lower() != 'y':
         print("Операция отменена.")
         return False
 
     print("Удаление существующих данных...")
+
+    # Сохраняем количество для статистики
+    stars_count = Star.objects.count()
+    categories_count = Category.objects.count()
+    countries_count = Country.objects.count()
+
+    # Удаляем звезд, категории и страны
     Star.objects.all().delete()
     Category.objects.all().delete()
     Country.objects.all().delete()
-    print("Данные удалены.")
+
+    print(f"Удалено {stars_count} записей знаменитостей, {categories_count} категорий и {countries_count} стран.")
     return True
 
 
@@ -298,7 +307,7 @@ if __name__ == "__main__":
     # Проверяем аргументы командной строки
     clear_existing = False
     update_existing = False
-    file_path = 'persons-1000.xlsx'
+    file_path = 'persons-final.xlsx'
 
     # Парсим аргументы командной строки
     for arg in sys.argv[1:]:
