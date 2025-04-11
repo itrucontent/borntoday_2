@@ -79,8 +79,12 @@ WSGI_APPLICATION = 'borntoday.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'borntoday',
+        'USER': 'borntoday_user',
+        'PASSWORD': 'Born[2025]pass',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -128,3 +132,23 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "PARSER_CLASS": "redis.connection.HiredisParser",
+            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+            "IGNORE_EXCEPTIONS": True,
+        }
+    }
+}
+
+# Время кэширования по умолчанию (в секундах)
+CACHE_TTL = 60 * 60 * 24  # 24 часа
+
+# Использовать Redis для сессий
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
