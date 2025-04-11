@@ -3,6 +3,7 @@ from datetime import date
 from django.utils.text import slugify
 from transliterate import translit
 
+
 class Country(models.Model):
     name = models.CharField(max_length=100)
     name_2 = models.CharField(max_length=100, blank=True, verbose_name="Название в родительном падеже")
@@ -26,6 +27,13 @@ class Country(models.Model):
 
         super().save(*args, **kwargs)
 
+    class Meta:
+        verbose_name = 'Страна'
+        verbose_name_plural = 'Страны'
+        indexes = [
+            models.Index(fields=['name']),
+        ]
+
 
 class Category(models.Model):
     title = models.CharField(max_length=100)
@@ -48,6 +56,14 @@ class Category(models.Model):
             self.slug = slug
 
         super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = 'Категория'
+        verbose_name_plural = 'Категории'
+        indexes = [
+            models.Index(fields=['title']),
+        ]
+
 
 class Star(models.Model):
     name = models.CharField(max_length=100, verbose_name="Имя знаменитости")
@@ -114,6 +130,14 @@ class Star(models.Model):
         ordering = ['-time_create']
         indexes = [
             models.Index(fields=['-time_create']),
+            # Новые индексы для оптимизации
+            models.Index(fields=['is_published'], name='published_idx'),
+            models.Index(fields=['rating'], name='rating_idx'),
+            models.Index(fields=['name'], name='name_idx'),
+            # Индекс для поиска дней рождения
+            models.Index(fields=['birth_date'], name='birth_date_idx'),
+            # Композитные индексы для частых запросов
+            models.Index(fields=['is_published', 'birth_date'], name='published_bday_idx'),
         ]
 
 

@@ -687,15 +687,32 @@ def add_star(request):
                     cache.delete(f'index_page_{today.month}_{today.day}')
                     cache.delete(f'birthday_stars_{today.month}_{today.day}_None_None')
 
-                # Очищаем кэш категорий
-                for category in star.categories.all():
-                    cache.delete_pattern(f'category_{category.slug}*')
-                    cache.delete_pattern(f'viable_tags_category_{category.id}*')
+                # ЗАМЕНЯЕМ НА:
+                # Очищаем кэш категорий и стран
+                today = date.today()
+                # Очищаем общие ключи
+                cache.delete('site_stats')
+                cache.delete('star_count')
+                cache.delete(f'index_page_{today.month}_{today.day}')
+                cache.delete(f'birthday_stars_{today.month}_{today.day}_None_None')
+                cache.delete('all_countries')
+                cache.delete('all_categories')
+                cache.delete('celebrities_rating_page1')
+                cache.delete('celebrities_birthday_page1')
 
-                # Очищаем кэш стран
+                # Очищаем кэш для категорий
+                for category in star.categories.all():
+                    cache.delete(f'category_{category.slug}')
+                    cache.delete(f'category_{category.slug}_birthday_page1')
+                    cache.delete(f'category_{category.slug}_rating_page1')
+                    cache.delete(f'viable_tags_category_{category.id}_10')
+
+                # Очищаем кэш для стран
                 for country in star.countries.all():
-                    cache.delete_pattern(f'country_{country.slug}*')
-                    cache.delete_pattern(f'viable_tags_country_{country.id}*')
+                    cache.delete(f'country_{country.slug}')
+                    cache.delete(f'country_{country.slug}_birthday_page1')
+                    cache.delete(f'country_{country.slug}_rating_page1')
+                    cache.delete(f'viable_tags_country_{country.id}_10')
 
             messages.success(request,
                              f'Знаменитость "{star.name}" успешно добавлена и будет опубликована после модерации!')
