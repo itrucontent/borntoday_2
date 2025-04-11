@@ -1,6 +1,7 @@
 db.sqlite3
+db_backup.sqlite3
 media/
 img/
 img-2/
 persons-final.xlsx
-persons-1000.xlsx
+persons-1000.xlsxgi
