@@ -124,6 +124,10 @@ class Star(models.Model):
 
         super().save(*args, **kwargs)
 
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('star_detail', kwargs={'slug': self.slug})
+
     class Meta:
         verbose_name = 'Знаменитость'
         verbose_name_plural = 'Знаменитости'

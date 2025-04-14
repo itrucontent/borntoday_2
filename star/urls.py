@@ -1,6 +1,8 @@
 from django.urls import path
 from django.views.decorators.cache import cache_page
 from . import views
+from django.contrib.sitemaps.views import sitemap
+
 
 # Время кэширования
 DAY = 60 * 60 * 24  # 24 часа
