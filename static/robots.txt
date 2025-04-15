@@ -1,5 +1,4 @@
 User-agent: *
-# Запрещаем технические URL и страницы поиска
 Disallow: /admin/
 Disallow: /search/
 Disallow: /add/
@@ -11,6 +10,4 @@ Disallow: /*?*
 Disallow: /*&*
 Disallow: /static/admin/
 Disallow: /media/admin/
-
-# Указываем путь к sitemap
 Sitemap: https://borntoday.ru/sitemap-index.xml

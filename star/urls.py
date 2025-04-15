@@ -35,3 +35,4 @@ urlpatterns = [
     path('names/', views.names, name='names'),
     path('names/<str:letter>/', views.names_letter, name='names_letter'),
 ]
+
